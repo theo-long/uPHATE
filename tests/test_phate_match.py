@@ -3,7 +3,6 @@ import pytest
 from phate import PHATE
 from sklearn.datasets import make_swiss_roll
 
-from uphate import get_phate_embedding
 from uphate.uphate import (
     compute_affinity_matrix,
     compute_diff_op,
