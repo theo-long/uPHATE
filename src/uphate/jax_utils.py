@@ -35,6 +35,9 @@ def compute_affinity_matrix(
 
     affinity = jnp.exp(-1 * locally_adaptive_pairwise_dist)
     affinity = jnp.where(affinity > thresh, affinity, 0.0)
+
+    # Symmetrize
+    affinity = (affinity + affinity.T) / 2
     return affinity
 
 
