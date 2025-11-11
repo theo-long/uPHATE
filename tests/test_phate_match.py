@@ -38,7 +38,7 @@ def test_phate_match(
         knn=knn,
         decay=decay,
         t=t,
-        n_landmark=None,
+        n_landmark=None,  # type: ignore
         mds_solver="smacof",
         gamma=gamma,
     )
@@ -55,7 +55,7 @@ def test_phate_match(
     diff_op = compute_diff_op(affinity_matrix)
     diff_potential = compute_diffusion_potential(diff_op=diff_op, t=t, gamma=gamma)
 
-    assert jnp.allclose(phate_op.graph.K.toarray(), affinity_matrix, atol=1e-5), (
+    assert jnp.allclose(phate_op.graph.K.toarray(), affinity_matrix, atol=1e-5), (  # type: ignore
         "Affinity matrices do not match"
     )
     assert jnp.allclose(diff_op, phate_op.diff_op, atol=1e-5), "Diff Ops do not match"
