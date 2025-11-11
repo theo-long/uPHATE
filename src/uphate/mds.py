@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as jnp
+import jaxopt
 import pcax
 
 from uphate.utils import pdist_squared
@@ -27,18 +28,26 @@ def compute_classic_mds_embedding(
     return pcax.transform(state, squared_dist_matrix)
 
 
+def mds_loss(X, Y):
+    """Loss function for MDS, used in custom derivative for MDS solver."""
+    triu_indices = jnp.triu_indices_from(X, k=1)
+    return (
+        (pdist_squared(X)[triu_indices] ** 0.5 - pdist_squared(Y)[triu_indices] ** 0.5)
+        ** 2
+    ).sum()
+
+
+@jaxopt.implicit_diff.custom_root(jax.grad(mds_loss))
 def compute_metric_mds_embedding(
     key: jax.Array,
+    init_embedding: jax.Array,
     diff_potential: jax.Array,
-    n_components: int,
 ):
     squared_dist_matrix = pdist_squared(diff_potential)
     dist_matrix = jnp.sqrt(squared_dist_matrix)
     triu_indices = jnp.stack(jnp.triu_indices_from(dist_matrix, k=1), axis=1)
     # Initialize with classic MDS
-    X_transformed = compute_classic_mds_embedding(
-        squared_dist_matrix, n_components=n_components
-    )
+    X_transformed = init_embedding
     iters_per_epoch = len(triu_indices)
 
     def pairwise_sgd_update(i, state):

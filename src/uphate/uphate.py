@@ -8,7 +8,7 @@ import jax
 import jax.numpy as jnp
 
 from uphate.utils import pdist_squared, compute_von_neumann_entropy, find_knee_point
-from uphate.mds import compute_metric_mds_embedding
+from uphate.mds import compute_metric_mds_embedding, compute_classic_mds_embedding
 
 
 def compute_affinity_matrix(
@@ -138,4 +138,7 @@ def get_phate_embedding(
     )
     diff_op = compute_diff_op(affinity_matrix)
     diff_potential = compute_diffusion_potential(diff_op, t, gamma)
-    return compute_metric_mds_embedding(key, diff_potential, n_components=n_components)
+    init_embedding = compute_classic_mds_embedding(
+        pdist_squared(diff_potential), n_components=n_components
+    )
+    return compute_metric_mds_embedding(key, init_embedding, diff_potential)
