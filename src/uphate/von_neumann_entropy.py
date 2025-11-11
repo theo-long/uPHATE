@@ -1,40 +1,4 @@
-import jax
 import jax.numpy as jnp
-
-
-def pdist_squared(x):
-    return jnp.sum(x[:, None] - x[None, :]) ** 2
-
-
-def compute_affinity_matrix(
-    X: jax.Array,
-    n_landmark: int,
-    knn: float,
-    decay: float,
-    thresh=1e-4,
-) -> jax.Array:
-    # TODO handle landmarks
-
-    # Note that rather than taking the square root to get distance, we just use squared dist everywhere
-    # To account for this we multiply the alpha decay factor by 0.5
-    decay *= 0.5
-    pairwise_dist = pdist_squared(X)
-    knn_low, knn_high = jnp.floor(knn), jnp.ceil(knn)
-    frac = knn_high - knn_low
-
-    # The bandwidth is given by the k-th nearest neighbor
-    # If k is a float, we just interpolate between floor and ceil
-    bandwith = (
-        jnp.sort(pairwise_dist, axis=1)[:, knn_low:knn_high]
-        * jnp.array([frac, 1 - frac])
-    ).sum(axis=1)
-
-    affinity = 0.5 * jnp.power(
-        pairwise_dist / bandwith[None, :], decay
-    ) + 0.5 * jnp.power(pairwise_dist / bandwith[:, None], decay)
-
-    affinity = jnp.where(affinity > thresh, affinity, 0.0)
-    return affinity
 
 
 def compute_von_neumann_entropy(data, t_max=100):
