@@ -3,7 +3,7 @@ import jax.numpy as jnp
 
 
 def pdist_squared(x):
-    return jnp.sum(x[:, None] - x[None, :]) ** 2
+    return jnp.sum((x[:, None] - x[None, :]) ** 2, axis=-1)
 
 
 def compute_affinity_matrix(
@@ -19,20 +19,21 @@ def compute_affinity_matrix(
     # To account for this we multiply the alpha decay factor by 0.5
     decay *= 0.5
     pairwise_dist = pdist_squared(X)
-    knn_low, knn_high = jnp.floor(knn), jnp.ceil(knn)
+    knn_low = jnp.floor(knn)
+    knn_high = knn_low + 1
     frac = knn_high - knn_low
 
     # The bandwidth is given by the k-th nearest neighbor
     # If k is a float, we just interpolate between floor and ceil
-    bandwith = (
-        jnp.sort(pairwise_dist, axis=1)[:, knn_low:knn_high]
-        * jnp.array([frac, 1 - frac])
-    ).sum(axis=1)
+    sorted_pairwise_dist = jnp.sort(pairwise_dist, axis=1)
+    bandwith = sorted_pairwise_dist[:, knn_low] * frac + sorted_pairwise_dist[
+        :, knn_high
+    ] * (1 - frac)
 
-    affinity = 0.5 * jnp.power(
-        pairwise_dist / bandwith[None, :], decay
-    ) + 0.5 * jnp.power(pairwise_dist / bandwith[:, None], decay)
+    # Note that this is *not* symmetric
+    locally_adaptive_pairwise_dist = jnp.power(pairwise_dist / bandwith[:, None], decay)
 
+    affinity = jnp.exp(-1 * locally_adaptive_pairwise_dist)
     affinity = jnp.where(affinity > thresh, affinity, 0.0)
     return affinity
 
