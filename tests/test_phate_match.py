@@ -30,8 +30,6 @@ def test_phate_match(
 ):
     X = swiss_roll_data
 
-    print(X.shape)
-
     n_components = 2
     phate_op = PHATE(
         n_components=n_components,
