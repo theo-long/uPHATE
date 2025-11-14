@@ -1,3 +1,4 @@
+from typing import Any
 import jax
 import jax.numpy as jnp
 import jaxopt
@@ -28,22 +29,39 @@ def compute_classic_mds_embedding(
     return pcax.transform(state, squared_dist_matrix)
 
 
-def mds_loss(X, Y):
-    """Loss function for MDS, used in custom derivative for MDS solver."""
-    triu_indices = jnp.triu_indices_from(X, k=1)
+def mds_loss(embedding: jax.Array, data: jax.Array, key: Any):
+    """
+    Loss function for MDS, used in custom derivative for MDS solver.
+        We pass the key to match the solver signature. Note that jaxopt expects
+        the optimality function (in this case grad(loss) == 0) to have the parameters
+        we are solving for be the *first* argument."""
+    triu_indices = jnp.triu_indices(embedding.shape[0], k=1)
     return (
-        (pdist_squared(X)[triu_indices] ** 0.5 - pdist_squared(Y)[triu_indices] ** 0.5)
+        (
+            pdist_squared(data)[triu_indices] ** 0.5
+            - pdist_squared(embedding)[triu_indices] ** 0.5
+        )
         ** 2
     ).sum()
 
 
 @jaxopt.implicit_diff.custom_root(jax.grad(mds_loss))
 def compute_metric_mds_embedding(
-    key: jax.Array,
     init_embedding: jax.Array,
-    diff_potential: jax.Array,
+    data: jax.Array,
+    key: jax.Array,
 ):
-    squared_dist_matrix = pdist_squared(diff_potential)
+    """Solve metric MDS using pairwise SGD on data indices.
+
+    Args:
+        init_embedding (jax.Array): Initialization for embedding
+        data (jax.Array): High-dimensional data
+        key (jax.Array): jax PRNG key used for SGD
+
+    Returns:
+        jax.Array: MDS solution
+    """
+    squared_dist_matrix = pdist_squared(data)
     dist_matrix = jnp.sqrt(squared_dist_matrix)
     triu_indices = jnp.stack(jnp.triu_indices_from(dist_matrix, k=1), axis=1)
     # Initialize with classic MDS
