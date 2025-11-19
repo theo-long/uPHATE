@@ -5,12 +5,14 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
+    "anndata>=0.10.9",
     "ipykernel>=6.31.0",
     "jax>=0.4.30",
     "jaxopt>=0.8.5",
     "numpy==1.26.4",
     "pcax>=0.1.0",
     "phate>=1.0.11",
+    "scanpy>=1.10.3",
 ]
 
 [dependency-groups]
