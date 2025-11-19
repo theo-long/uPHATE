@@ -13,6 +13,7 @@ dependencies = [
     "pcax>=0.1.0",
     "phate>=1.0.11",
     "scanpy>=1.10.3",
+    "seaborn>=0.13.2",
 ]
 
 [dependency-groups]

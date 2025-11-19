@@ -3211,6 +3211,7 @@ dependencies = [
     { name = "phate" },
     { name = "scanpy", version = "1.10.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "scanpy", version = "1.11.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "seaborn" },
 ]
 
 [package.dev-dependencies]
@@ -3230,6 +3231,7 @@ requires-dist = [
     { name = "pcax", specifier = ">=0.1.0" },
     { name = "phate", specifier = ">=1.0.11" },
     { name = "scanpy", specifier = ">=1.10.3" },
+    { name = "seaborn", specifier = ">=0.13.2" },
 ]
 
 [package.metadata.requires-dev]
