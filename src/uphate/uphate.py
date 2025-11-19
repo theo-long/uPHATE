@@ -141,4 +141,4 @@ def get_phate_embedding(
     init_embedding = compute_classic_mds_embedding(
         pdist_squared(diff_potential), n_components=n_components
     )
-    return compute_metric_mds_embedding(key, init_embedding, diff_potential)
+    return compute_metric_mds_embedding(init_embedding, diff_potential, key)
