@@ -2,6 +2,7 @@
 Differentiable implementation of PHATE
 """
 
+from functools import partial, wraps
 from typing import Optional
 
 import jax
@@ -83,6 +84,18 @@ def compute_diffusion_potential(
     )
 
 
+@partial(
+    jax.jit,
+    static_argnames=[
+        "t",
+        "n_components",
+        "knn",
+        "decay",
+        "n_landmark",
+        "gamma",
+        "weights",
+    ],
+)
 def get_phate_embedding(
     X: jax.Array,
     key: jax.Array,
@@ -93,6 +106,7 @@ def get_phate_embedding(
     decay: float = 40.0,
     n_landmark: Optional[int] = None,
     gamma: float = 1.0,
+    weights: Optional[jax.Array] = None,
 ):
     """Calculate the PHATE embedding of a dataset X.
 
@@ -129,6 +143,8 @@ def get_phate_embedding(
             Informational distance constant between -1 and 1.
             `gamma=1` gives the PHATE log potential, `gamma=0` gives
             a square root potential.
+
+        weights : node weights, used for bootstrap sampling.
     """
     affinity_matrix = compute_affinity_matrix(
         X,
@@ -136,6 +152,8 @@ def get_phate_embedding(
         knn=knn,
         decay=decay,
     )
+    if weights:
+        affinity_matrix = affinity_matrix * weights[None, :]
     diff_op = compute_diff_op(affinity_matrix)
     diff_potential = compute_diffusion_potential(diff_op, t, gamma)
     init_embedding = compute_classic_mds_embedding(
