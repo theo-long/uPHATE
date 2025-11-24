@@ -66,11 +66,9 @@ def compute_metric_mds_embedding(
     triu_indices = jnp.stack(jnp.triu_indices_from(dist_matrix, k=1), axis=1)
     # Initialize with classic MDS
     X_transformed = init_embedding
-    iters_per_epoch = len(triu_indices)
 
-    def pairwise_sgd_update(i, state):
-        X_transformed, triu_indices, lr = state
-        index = triu_indices[i]
+    def pairwise_sgd_update(state, index):
+        X_transformed, lr = state
         X_ij = X_transformed[index[0]] - X_transformed[index[1]]
         transformed_dist = jnp.linalg.norm(X_ij)
         r = (
@@ -81,21 +79,22 @@ def compute_metric_mds_embedding(
         X_transformed = X_transformed.at[index].add(
             jnp.array([-lr * r, lr * r]),
         )
-        return X_transformed, triu_indices, lr
+        return (X_transformed, lr), None
 
-    def sgd_epoch(i, state):
+    def sgd_epoch(state, lr):
         key, X_transformed = state
-        lr = DEFAULT_LR_SCHEDULE[i]
         key, subkey = jax.random.split(key)
         shuffled_triu_indices = jax.random.permutation(subkey, triu_indices)
-
-        inner_state = (X_transformed, shuffled_triu_indices, lr)
-        X_transformed, shuffled_triu_indices, lr = jax.lax.fori_loop(
-            0, iters_per_epoch, pairwise_sgd_update, inner_state
+        (X_transformed, lr), _ = jax.lax.scan(
+            pairwise_sgd_update,
+            init=(X_transformed, lr),
+            xs=shuffled_triu_indices,
         )
-        return key, X_transformed
+        return (key, X_transformed), None
 
-    key, X_transformed = jax.lax.fori_loop(
-        0, LR_SCHEDULE_LENGTH, sgd_epoch, (key, X_transformed)
+    (key, X_transformed), _ = jax.lax.scan(
+        sgd_epoch,
+        init=(key, X_transformed),
+        xs=DEFAULT_LR_SCHEDULE,
     )
     return X_transformed
