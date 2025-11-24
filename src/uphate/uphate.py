@@ -2,7 +2,7 @@
 Differentiable implementation of PHATE
 """
 
-from functools import partial, wraps
+from functools import partial
 from typing import Optional
 
 import jax
