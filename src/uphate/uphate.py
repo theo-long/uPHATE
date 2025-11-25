@@ -25,7 +25,7 @@ def compute_affinity_matrix(
     # To account for this we multiply the alpha decay factor by 0.5
     decay *= 0.5
     pairwise_dist = pdist_squared(X)
-    knn_low = jnp.floor(knn)
+    knn_low = jnp.floor(knn).astype(jnp.int32)
     knn_high = knn_low + 1
     frac = knn_high - knn_low
 

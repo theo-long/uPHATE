@@ -1,7 +1,6 @@
 # Notes
 
 - Need to handle landmarking
-- knn float is currently not working
 - make derivative calc faster/more manageable
 - start doing some basic visualizations
 - use synthetic tree dataset
