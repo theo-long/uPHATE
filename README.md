@@ -1,6 +1,7 @@
 # Notes
 
 - Need to handle landmarking
+- use sparse arrays
 - make derivative calc faster/more manageable
 - start doing some basic visualizations
 - use synthetic tree dataset
