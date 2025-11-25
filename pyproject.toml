@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "anndata>=0.10.9",
+    "cr-sparse>=0.4.0",
     "ipykernel>=6.31.0",
     "jax>=0.4.30",
     "jaxopt>=0.8.5",
