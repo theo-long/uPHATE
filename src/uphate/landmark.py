@@ -4,8 +4,8 @@ import jax.numpy as jnp
 from cr.sparse.cluster.spectral import normalized_symmetric_fast_k
 
 
-def build_landmark_op(key: jax.Array, affinity_matrix: jax.Array, n_landmark: int):
-    """Build the landmark operator
+def compute_landmark_op(key: jax.Array, affinity_matrix: jax.Array, n_landmark: int):
+    """Compute the landmark operator
     Calculates spectral clusters on the kernel, and calculates transition
     probabilities between cluster centers by using transition probabilities
     between samples assigned to each cluster.
@@ -15,15 +15,13 @@ def build_landmark_op(key: jax.Array, affinity_matrix: jax.Array, n_landmark: in
     del subkey
 
     # transition matrices
-    pmn = jnp.array(
-        [jnp.sum(affinity_matrix[clusters == i, :], axis=0) for i in range(n_landmark)]
-    )
+    # P(node i -> cluster k) = sum(A_ij for node j in cluster k)
+    pmn = jax.ops.segment_sum(affinity_matrix, clusters.assignment, n_landmark)
 
     # row normalize
     pnm = pmn.transpose()
     pmn /= pmn.sum(axis=1, keepdims=True)
     pnm /= pnm.sum(axis=1, keepdims=True)
 
-    # sparsity agnostic matrix multiplication
-    landmark_op = pmn.dot(pnm)
+    landmark_op = jnp.matmul(pmn, pnm)
     return landmark_op
