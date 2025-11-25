@@ -1,4 +1,6 @@
+import jax
 import jax.numpy as jnp
+from scipy.spatial.transform import Rotation
 
 
 def pdist_squared(x):
@@ -133,3 +135,23 @@ def find_knee_point(y, x=None):
     loc = jnp.argmin(error_curve[1:-1]) + 1
     knee_point = x[loc]
     return knee_point
+
+
+def add_zero_dim(arr):
+    return jnp.hstack((arr, jnp.zeros((arr.shape[0], 1))))
+
+
+def align_embeddings(base: jax.Array, other: jax.Array):
+    """
+    Apply a rotation to align the embedding `other` to the embedding `base`
+    """
+    if base.shape[1] == 2:
+        base = add_zero_dim(base)
+
+    out_dims = 3
+    if other.shape[1] == 2:
+        other = add_zero_dim(other)
+        out_dims = 2
+
+    rot, _ = Rotation.align_vectors(base, other)
+    return rot.apply(other)[:, :out_dims]

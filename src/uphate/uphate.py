@@ -2,12 +2,13 @@
 Differentiable implementation of PHATE
 """
 
-from functools import partial
 from typing import Optional
 
 import jax
 import jax.numpy as jnp
+from tqdm import trange
 
+from uphate.landmark import compute_landmark_op, extend_to_graph
 from uphate.utils import pdist_squared, compute_von_neumann_entropy, find_knee_point
 from uphate.mds import compute_metric_mds_embedding, compute_classic_mds_embedding
 
@@ -84,17 +85,6 @@ def compute_diffusion_potential(
     )
 
 
-@partial(
-    jax.jit,
-    static_argnames=[
-        "t",
-        "n_components",
-        "knn",
-        "decay",
-        "n_landmark",
-        "gamma",
-    ],
-)
 def get_phate_embedding(
     X: jax.Array,
     key: jax.Array,
@@ -170,3 +160,97 @@ def get_phate_embedding(
         pdist_squared(diff_potential), n_components=n_components
     )
     return compute_metric_mds_embedding(init_embedding, diff_potential, key)
+
+
+get_phate_embedding_jit = jax.jit(
+    get_phate_embedding,
+    static_argnames=[
+        "t",
+        "n_components",
+        "knn",
+        "decay",
+        "n_landmark",
+        "gamma",
+    ],
+)
+
+
+def get_phate_embedding_bootstrap(
+    X: jax.Array,
+    key: jax.Array,
+    *,
+    n_samples: int,
+    dirichlet_alpha: float = 1.0,
+    t: float,
+    n_components: int = 2,
+    knn: float = 5.0,
+    decay: float = 40.0,
+    n_landmark: Optional[int] = None,
+    gamma: float = 1.0,
+):
+    """Generate bayesian bootstrap samples of the phate embedding
+
+    Args:
+        X: jax.Array
+            data to generate low-dimensional embedding for
+
+        key: jax.Array
+            jax PRNG key.
+
+        n_samples: int
+            number of bootstrap samples
+
+        dirichlet_alpha: float, default: 1
+            alpha parameter to use for bootstrap dirichlet distribution
+
+        n_components : int, optional, default: 2
+            number of dimensions in which the data will be embedded
+
+        knn : int, optional, default: 5
+            number of nearest neighbors on which to build kernel
+
+        decay : int, optional, default: 40
+            sets decay rate of kernel tails.
+            If None, alpha decaying kernel is not used
+
+        n_landmark : int, optional, default: None
+            number of landmarks to use in fast PHATE
+
+        t : int
+            power to which the diffusion operator is powered.
+            This sets the level of diffusion.
+
+        gamma : float, optional, default: 1
+            Informational distance constant between -1 and 1.
+            `gamma=1` gives the PHATE log potential, `gamma=0` gives
+            a square root potential.
+
+        weights : node weights, used for bootstrap sampling.
+
+    Returns:
+        jax.Array : bootstrapped embedding samples
+    """
+    embeddings = []
+    key, subkey = jax.random.split(key)
+    weights = jax.random.dirichlet(
+        subkey, jnp.ones(X.shape[0]) * dirichlet_alpha, shape=(n_samples,)
+    )
+    del subkey
+    for i in trange(n_samples):
+        weight_vector = weights[i]
+        key, subkey = jax.random.split(key)
+        emb = get_phate_embedding_jit(
+            jnp.array(X),
+            subkey,
+            n_components=n_components,
+            knn=knn,
+            t=t,
+            decay=decay,
+            n_landmark=n_landmark,
+            gamma=gamma,
+            weights=weight_vector,
+        )
+        del subkey
+        embeddings.append(emb)
+
+    return jnp.stack(embeddings)
