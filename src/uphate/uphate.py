@@ -93,7 +93,6 @@ def compute_diffusion_potential(
         "decay",
         "n_landmark",
         "gamma",
-        "weights",
     ],
 )
 def get_phate_embedding(
@@ -152,7 +151,7 @@ def get_phate_embedding(
         knn=knn,
         decay=decay,
     )
-    if weights:
+    if weights is not None:
         affinity_matrix = affinity_matrix * weights[None, :]
     diff_op = compute_diff_op(affinity_matrix)
     diff_potential = compute_diffusion_potential(diff_op, t, gamma)
