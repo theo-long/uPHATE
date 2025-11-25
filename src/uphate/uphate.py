@@ -131,7 +131,7 @@ def get_phate_embedding(
             sets decay rate of kernel tails.
             If None, alpha decaying kernel is not used
 
-        n_landmark : int, optional, default: 2000
+        n_landmark : int, optional, default: None
             number of landmarks to use in fast PHATE
 
         t : int
@@ -153,8 +153,19 @@ def get_phate_embedding(
     )
     if weights is not None:
         affinity_matrix = affinity_matrix * weights[None, :]
-    diff_op = compute_diff_op(affinity_matrix)
-    diff_potential = compute_diffusion_potential(diff_op, t, gamma)
+
+    if n_landmark is None:
+        diff_op = compute_diff_op(affinity_matrix)
+        diff_potential = compute_diffusion_potential(diff_op, t, gamma)
+    else:
+        key, subkey = jax.random.split(key)
+        diff_op, data_to_landmarks = compute_landmark_op(
+            subkey, affinity_matrix, n_landmark
+        )
+        del subkey
+        diff_potential = compute_diffusion_potential(diff_op, t, gamma)
+        diff_potential = extend_to_graph(data_to_landmarks, diff_potential)
+
     init_embedding = compute_classic_mds_embedding(
         pdist_squared(diff_potential), n_components=n_components
     )
