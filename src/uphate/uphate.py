@@ -15,7 +15,6 @@ from uphate.mds import compute_metric_mds_embedding, compute_classic_mds_embeddi
 
 def compute_affinity_matrix(
     X: jax.Array,
-    n_landmark: Optional[int],
     knn: float,
     decay: float,
     thresh=1e-4,
@@ -137,7 +136,6 @@ def get_phate_embedding(
     """
     affinity_matrix = compute_affinity_matrix(
         X,
-        n_landmark=n_landmark,
         knn=knn,
         decay=decay,
     )
