@@ -27,7 +27,8 @@ def compute_affinity_matrix(
     decay *= 0.5
     pairwise_dist = pdist_squared(X)
     if affinity_weights is not None:
-        pairwise_dist = pairwise_dist * affinity_weights[None, :]
+        # Higher weight -> closer distance
+        pairwise_dist = pairwise_dist / affinity_weights[None, :]
     knn_low = jnp.floor(knn).astype(jnp.int32)
     knn_high = knn_low + 1
     frac = knn_high - knn_low
