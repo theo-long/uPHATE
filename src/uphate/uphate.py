@@ -17,7 +17,7 @@ def compute_affinity_matrix(
     X: jax.Array,
     knn: float,
     decay: float,
-    thresh=1e-4,
+    threshold: float,
     affinity_weights: Optional[jax.Array] = None,
 ) -> jax.Array:
     # TODO handle landmarks
@@ -27,9 +27,7 @@ def compute_affinity_matrix(
     decay *= 0.5
     pairwise_dist = pdist_squared(X)
     if affinity_weights is not None:
-        pairwise_dist = (
-            pairwise_dist * affinity_weights[:, None] * affinity_weights[None, :]
-        )
+        pairwise_dist = pairwise_dist * affinity_weights[None, :]
     knn_low = jnp.floor(knn).astype(jnp.int32)
     knn_high = knn_low + 1
     frac = knn_high - knn_low
@@ -45,7 +43,7 @@ def compute_affinity_matrix(
     locally_adaptive_pairwise_dist = jnp.power(pairwise_dist / bandwith[:, None], decay)
 
     affinity = jnp.exp(-1 * locally_adaptive_pairwise_dist)
-    affinity = jnp.where(affinity > thresh, affinity, 0.0)
+    affinity = jnp.where(affinity > threshold, affinity, 0.0)
 
     # Symmetrize
     affinity = (affinity + affinity.T) / 2
@@ -101,6 +99,7 @@ def get_phate_embedding(
     gamma: float = 1.0,
     weights: Optional[jax.Array] = None,
     affinity_weights: Optional[jax.Array] = None,
+    threshold: float = 1e-4,
 ):
     """Calculate the PHATE embedding of a dataset X.
 
@@ -138,13 +137,22 @@ def get_phate_embedding(
             `gamma=1` gives the PHATE log potential, `gamma=0` gives
             a square root potential.
 
-        weights : node weights, used for bootstrap sampling.
+        weights : jax.Array, optional, default: None
+            node weights, used for bootstrap sampling.
+
+        affinity_weights : jax.Array, optional, default: None
+            weights to use when computing affinity matrix.
+
+        threshhold : float, default: 1e-4
+            threshold below which affinities are set to zero. If 0 or negative,
+            no thresholding is performed.
     """
     affinity_matrix = compute_affinity_matrix(
         X,
         knn=knn,
         decay=decay,
         affinity_weights=affinity_weights,
+        threshold=threshold,
     )
     if weights is not None:
         affinity_matrix = affinity_matrix * weights[None, :]
@@ -176,6 +184,7 @@ get_phate_embedding_jit = jax.jit(
         "decay",
         "n_landmark",
         "gamma",
+        "threshold",
     ],
 )
 
@@ -192,7 +201,6 @@ def get_phate_embedding_bootstrap(
     decay: float = 40.0,
     n_landmark: Optional[int] = None,
     gamma: float = 1.0,
-    affinity_weighting: bool = False,
 ):
     """Generate bayesian bootstrap samples of the phate embedding
 
@@ -244,13 +252,7 @@ def get_phate_embedding_bootstrap(
     )
     del subkey
     for i in trange(n_samples):
-        affinity_weight_vector = None
-        weight_vector = None
-        if affinity_weighting:
-            affinity_weight_vector = weights[i]
-            affinity_weight_vector *= len(affinity_weight_vector)
-        else:
-            weight_vector = weights[i]
+        weight_vector = weights[i]
         key, subkey = jax.random.split(key)
         emb = get_phate_embedding_jit(
             X,
@@ -262,7 +264,7 @@ def get_phate_embedding_bootstrap(
             n_landmark=n_landmark,
             gamma=gamma,
             weights=weight_vector,
-            affinity_weights=affinity_weight_vector,
+            threshold=0.0,
         )
         del subkey
         embeddings.append(emb)
