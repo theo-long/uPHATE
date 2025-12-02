@@ -18,6 +18,7 @@ def compute_affinity_matrix(
     knn: float,
     decay: float,
     thresh=1e-4,
+    affinity_weights: Optional[jax.Array] = None,
 ) -> jax.Array:
     # TODO handle landmarks
 
@@ -25,6 +26,10 @@ def compute_affinity_matrix(
     # To account for this we multiply the alpha decay factor by 0.5
     decay *= 0.5
     pairwise_dist = pdist_squared(X)
+    if affinity_weights is not None:
+        pairwise_dist = (
+            pairwise_dist * affinity_weights[:, None] * affinity_weights[None, :]
+        )
     knn_low = jnp.floor(knn).astype(jnp.int32)
     knn_high = knn_low + 1
     frac = knn_high - knn_low
@@ -95,6 +100,7 @@ def get_phate_embedding(
     n_landmark: Optional[int] = None,
     gamma: float = 1.0,
     weights: Optional[jax.Array] = None,
+    affinity_weights: Optional[jax.Array] = None,
 ):
     """Calculate the PHATE embedding of a dataset X.
 
@@ -138,6 +144,7 @@ def get_phate_embedding(
         X,
         knn=knn,
         decay=decay,
+        affinity_weights=affinity_weights,
     )
     if weights is not None:
         affinity_matrix = affinity_matrix * weights[None, :]
@@ -185,6 +192,7 @@ def get_phate_embedding_bootstrap(
     decay: float = 40.0,
     n_landmark: Optional[int] = None,
     gamma: float = 1.0,
+    affinity_weighting: bool = False,
 ):
     """Generate bayesian bootstrap samples of the phate embedding
 
@@ -228,6 +236,7 @@ def get_phate_embedding_bootstrap(
     Returns:
         jax.Array : bootstrapped embedding samples
     """
+    X = jnp.array(X)
     embeddings = []
     key, subkey = jax.random.split(key)
     weights = jax.random.dirichlet(
@@ -235,10 +244,16 @@ def get_phate_embedding_bootstrap(
     )
     del subkey
     for i in trange(n_samples):
-        weight_vector = weights[i]
+        affinity_weight_vector = None
+        weight_vector = None
+        if affinity_weighting:
+            affinity_weight_vector = weights[i]
+            affinity_weight_vector *= len(affinity_weight_vector)
+        else:
+            weight_vector = weights[i]
         key, subkey = jax.random.split(key)
         emb = get_phate_embedding_jit(
-            jnp.array(X),
+            X,
             subkey,
             n_components=n_components,
             knn=knn,
@@ -247,6 +262,7 @@ def get_phate_embedding_bootstrap(
             n_landmark=n_landmark,
             gamma=gamma,
             weights=weight_vector,
+            affinity_weights=affinity_weight_vector,
         )
         del subkey
         embeddings.append(emb)
