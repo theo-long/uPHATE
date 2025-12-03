@@ -246,28 +246,27 @@ def get_phate_embedding_bootstrap(
         jax.Array : bootstrapped embedding samples
     """
     X = jnp.array(X)
-    embeddings = []
     key, subkey = jax.random.split(key)
     weights = jax.random.dirichlet(
         subkey, jnp.ones(X.shape[0]) * dirichlet_alpha, shape=(n_samples,)
     )
     del subkey
-    for i in trange(n_samples):
-        weight_vector = weights[i]
-        key, subkey = jax.random.split(key)
-        emb = get_phate_embedding_jit(
-            X,
-            subkey,
-            n_components=n_components,
-            knn=knn,
-            t=t,
-            decay=decay,
-            n_landmark=n_landmark,
-            gamma=gamma,
-            weights=weight_vector,
-            threshold=0.0,
+    keys = jax.random.split(key, n_samples)
+    vmap_get_phate_embedding = jax.jit(
+        jax.vmap(
+            lambda X, k, w: get_phate_embedding(
+                X,
+                k,
+                n_components=n_components,
+                knn=knn,
+                t=t,
+                decay=decay,
+                n_landmark=n_landmark,
+                gamma=gamma,
+                weights=w,
+                threshold=0.0,
+            ),
+            in_axes=(None, 0, 0),
         )
-        del subkey
-        embeddings.append(emb)
-
-    return jnp.stack(embeddings)
+    )
+    return vmap_get_phate_embedding(X, keys, weights)
