@@ -9,12 +9,17 @@ dependencies = [
     "cr-sparse>=0.4.0",
     "ipykernel>=6.31.0",
     "jax>=0.4.30",
+    "jax[cuda12]>=0.4.30 ; sys_platform == 'linux'",
     "jaxopt>=0.8.5",
     "numpy==1.26.4",
     "pcax>=0.1.0",
-    "phate>=1.0.11",
     "scanpy>=1.10.3",
     "seaborn>=0.13.2",
+]
+
+[project.optional-dependencies]
+phate = [
+    "phate>=2.0.0",
 ]
 
 [dependency-groups]
