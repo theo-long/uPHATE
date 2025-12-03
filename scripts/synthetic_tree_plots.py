@@ -1,9 +1,9 @@
 from pathlib import Path
 import jax
 import jax.numpy as jnp
-
-from matplotlib.collections import EllipseCollection
+import numpy as np
 import matplotlib.pyplot as plt
+
 from uphate.uphate import (
     get_phate_embedding,
     get_phate_embedding_jit,
@@ -17,12 +17,13 @@ PHATE_PARAMS = {
     "knn": 5.0,
     "t": 20,
 }
-
 DATA_PARAMS = {
-    "n_branch": 5,
-    "n_dim": 10,
-    "branch_length": 10,
+    "n_branch": 10,
+    "n_dim": 100,
+    "branch_length": 100,
 }
+PLOT_INDEX = 0
+FIGSIZE = (6, 5)
 
 fig_dir = Path("figures")
 fig_dir.mkdir(exist_ok=True)
@@ -44,7 +45,7 @@ def get_base_phate(X, key):
 
 
 def base_phate_plot(X_uphate, labels):
-    fig, ax = plt.subplots(figsize=(6, 5))
+    fig, ax = plt.subplots(figsize=FIGSIZE)
     scatter = ax.scatter(
         X_uphate[:, 0],
         X_uphate[:, 1],
@@ -56,13 +57,14 @@ def base_phate_plot(X_uphate, labels):
     ax.set_title("Base PHATE Embedding")
     ax.set_xlabel("PHATE 1")
     ax.set_ylabel("PHATE 2")
-    plt.colorbar(scatter, label="Branch Label")
+    ax.set_aspect("equal")
+    ax.legend(*scatter.legend_elements(), title="Branches")
     fig.tight_layout()
     fig.savefig("figures/base_phate_embedding.png", dpi=300)
     return fig, ax
 
 
-def get_boostrap_embeddings(X, key, n_bootstrap=10):
+def get_boostrap_embeddings(X, key, n_bootstrap):
     print("Generating bootstrap PHATE embeddings...")
     embeddings = get_phate_embedding_bootstrap(
         jnp.array(X),
@@ -82,28 +84,30 @@ def align_bootstrap_embeddings(embeddings, base_phate_embedding):
 
 
 def bootstrap_phate_plot(aligned_embeddings):
-    fig, ax = plt.subplots(figsize=(6, 5))
+    fig, ax = plt.subplots(figsize=FIGSIZE)
     for emb in aligned_embeddings:
         ax.scatter(*emb.T, s=1)
     ax.set_title("Bootstrap PHATE Embeddings")
     ax.set_xlabel("PHATE 1")
     ax.set_ylabel("PHATE 2")
+    ax.set_aspect("equal")
     fig.tight_layout()
     fig.savefig("figures/bootstrap_phate_embeddings.png", dpi=300)
     return fig, ax
 
 
-def bootstrap_point_plot(aligned_embeddings, index=0):
-    fig, ax = plt.subplots(figsize=(6, 5))
+def bootstrap_point_plot(aligned_embeddings, point_index):
+    fig, ax = plt.subplots(figsize=FIGSIZE)
     for emb in aligned_embeddings:
         ax.scatter(*emb.T, c="gray", alpha=0.2, s=1)
 
     for emb in aligned_embeddings:
-        ax.scatter(*emb[index].T, s=10, marker="x")
+        ax.scatter(*emb[point_index].T, s=10, marker="x")
 
-    ax.set_title(f"Bootstrapped PHATE Embeddings for {index}-th Point")
+    ax.set_title("Bootstrapped PHATE Embeddings for Single Point")
     ax.set_xlabel("PHATE 1")
     ax.set_ylabel("PHATE 2")
+    ax.set_aspect("equal")
     fig.tight_layout()
     fig.savefig("figures/bootstrap_phate_point_embeddings.png", dpi=300)
     return fig, ax
@@ -130,21 +134,83 @@ def phate_gradients(X, key):
     return X_uphate_jac
 
 
+def create_gradient_sprite(size, cmap_name):
+    """
+    Creates a square RGBA image with a radial gradient circle in the middle.
+    Pixels outside the circle are transparent.
+    """
+    # Create a grid of coordinates from -1 to 1
+    x = np.linspace(-1, 1, size)
+    y = np.linspace(-1, 1, size)
+    X, Y = np.meshgrid(x, y)
+
+    # Calculate radius
+    R = np.sqrt(X**2 + Y**2)
+
+    # Normalize radius for the colormap (0 at center, 1 at edge)
+    # You can flip this (1 - R) if you want the "hottest" color in the center
+    norm_R = 1 - R
+
+    # Get colormap
+    cmap = plt.get_cmap(cmap_name)
+
+    # Apply colormap to the radius values
+    # This gives us an (N, N, 4) array (RGBA)
+    image = cmap(norm_R)
+
+    # Set Alpha channel:
+    # 1. Make pixels outside the circle (R > 1) completely transparent
+    image[R > 1, 3] = 0.0
+
+    # Fade the alpha towards the edge for a "glowing" effect
+    image[:, :, 3] = np.maximum((1 - R) ** 0.5 * (R <= 1), 0.1)
+
+    return image
+
+
+def plot_ellipses_with_sprites(positions, axis_lengths):
+    # --- Plotting ---
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    # 1. Generate the generic gradient image once
+    sprite = create_gradient_sprite(size=512, cmap_name="Blues")
+
+    # 2. Plot each ellipse as a stretched image
+    for pos, axes in zip(positions, axis_lengths):
+        cx, cy = pos
+        width, height = axes
+
+        # Calculate the bounding box (extent) for imshow
+        # extent = [left, right, bottom, top]
+        left = cx - width / 2
+        right = cx + width / 2
+        bottom = cy - height / 2
+        top = cy + height / 2
+
+        # Plot the image stretched to the ellipse bounds
+        ax.imshow(
+            sprite,
+            extent=(left, right, bottom, top),
+            aspect="auto",  # Allows stretching
+            origin="lower",
+            interpolation="bilinear",
+        )  # Smooths the gradient
+
+    # 3. Plot the black dots on top
+    ax.scatter(positions[:, 0], positions[:, 1], c="black", s=1, zorder=10)
+    return fig, ax
+
+
 def phate_gradients_plot(X_uphate_jac, X_uphate):
-    grad_magnitudes = jnp.linalg.norm(X_uphate_jac, axis=(2, 3))
-    fig, ax = plt.subplots()
-    ec = EllipseCollection(
-        widths=grad_magnitudes[:, 0],
-        heights=grad_magnitudes[:, 1],
-        angles=jnp.zeros(grad_magnitudes.shape[0]),
-        offsets=X_uphate,
-        units="xy",
-        transOffset=ax.transData,
+    grad_magnitudes = jnp.linalg.norm(X_uphate_jac, axis=(2, 3)) / jnp.sqrt(
+        X_uphate_jac.shape[2] * X_uphate_jac.shape[3]
     )
 
-    ax.add_collection(ec)
-    ax.set_xlim(X_uphate[:, 0].min() * 1.05, X_uphate[:, 0].max() * 1.05)
-    ax.set_ylim(X_uphate[:, 1].min() * 1.05, X_uphate[:, 1].max() * 1.05)
+    fig, ax = plot_ellipses_with_sprites(X_uphate, grad_magnitudes)
+    ax.set_aspect("equal")
+    ax.set_title("Position Uncertainty via PHATE Gradient Magnitudes")
+    ax.set_xlabel("PHATE 1")
+    ax.set_ylabel("PHATE 2")
     fig.tight_layout()
     fig.savefig("figures/phate_gradient_magnitudes.png", dpi=300)
     return fig, ax
@@ -159,10 +225,10 @@ def main():
     base_phate_plot(X_uphate, labels)
 
     key, bootstrap_subkey = jax.random.split(key)
-    embeddings = get_boostrap_embeddings(X, bootstrap_subkey, n_bootstrap=20)
+    embeddings = get_boostrap_embeddings(X, bootstrap_subkey, n_bootstrap=5)
     aligned_embeddings = align_bootstrap_embeddings(embeddings, X_uphate)
     bootstrap_phate_plot(aligned_embeddings)
-    bootstrap_point_plot(aligned_embeddings, index=100)
+    bootstrap_point_plot(aligned_embeddings, PLOT_INDEX)
 
     X_uphate_jac = phate_gradients(X, base_subkey)
     phate_gradients_plot(X_uphate_jac, X_uphate)
