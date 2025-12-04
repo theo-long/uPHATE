@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 import jax
 import jax.numpy as jnp
@@ -12,22 +13,39 @@ from uphate.uphate import (
 from uphate.utils import align_embeddings
 from phate.tree import gen_dla
 
-PHATE_PARAMS = {
-    "n_components": 2,
-    "knn": 5.0,
-    "t": 20,
-}
 DATA_PARAMS = {
     "n_branch": 10,
     "n_dim": 50,
     "branch_length": 80,
 }
-PLOT_INDEX = 0
-N_BOOTSTRAP = 10
 FIGSIZE = (6, 5)
 
 fig_dir = Path("figures")
 fig_dir.mkdir(exist_ok=True)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate PHATE uncertainty plots.")
+    parser.add_argument(
+        "--n_bootstrap", type=int, default=10, help="Number of bootstrap samples."
+    )
+    parser.add_argument(
+        "--plot_index",
+        type=int,
+        default=0,
+        help="Index of point to plot in bootstrap point plot.",
+    )
+    parser.add_argument(
+        "--knn", type=float, default=5.0, help="Number of nearest neighbors for PHATE."
+    )
+    parser.add_argument(
+        "--t", type=float, default=20.0, help="Diffusion time for PHATE."
+    )
+    parser.add_argument(
+        "--dataset", type=str, choices=["dla"], default="dla", help="Dataset to use."
+    )
+    args = parser.parse_args()
+    return args
 
 
 def get_data():
@@ -35,12 +53,12 @@ def get_data():
     return jnp.array(X), labels
 
 
-def get_base_phate(X, key):
+def get_base_phate(X, key, phate_params):
     print("Generating base PHATE embedding...")
     X_uphate: jax.Array = get_phate_embedding_jit(
         X,
         key,
-        **PHATE_PARAMS,
+        **phate_params,
     )
     return X_uphate
 
@@ -66,17 +84,17 @@ def base_phate_plot(X_uphate, labels):
         loc="upper right",
     )
     fig.tight_layout()
-    fig.savefig("figures/base_phate_embedding.png", dpi=300)
+    fig.savefig(fig_dir / "base_phate_embedding.png", dpi=300)
     return fig, ax
 
 
-def get_boostrap_embeddings(X, key, n_bootstrap):
+def get_boostrap_embeddings(X, key, n_bootstrap, phate_params):
     print("Generating bootstrapped PHATE embeddings...")
     embeddings = get_phate_embedding_bootstrap(
         jnp.array(X),
         key,
         n_samples=n_bootstrap,
-        **PHATE_PARAMS,
+        **phate_params,
     )
     return embeddings
 
@@ -95,12 +113,12 @@ def bootstrap_phate_plot(aligned_embeddings, base_phate_embedding):
     for ax, emb, color in zip(axs.ravel(), aligned_embeddings, colors):
         ax.scatter(*emb.T, s=1, c=color)
         ax.scatter(*base_phate_embedding.T, c="grey", s=5, alpha=0.5)
-        ax.set_aspect('equal', adjustable='box')
+        ax.set_aspect("equal", adjustable="box")
     fig.supxlabel("PHATE 1")
     fig.supylabel("PHATE 2")
     fig.suptitle("Bootstrapped PHATE Embeddings vs. Base Embedding")
     fig.tight_layout()
-    fig.savefig("figures/bootstrap_phate_embeddings.png", dpi=300)
+    fig.savefig(fig_dir / "bootstrap_phate_embeddings.png", dpi=300)
     return fig, axs
 
 
@@ -117,15 +135,15 @@ def bootstrap_point_plot(aligned_embeddings, point_index):
     ax.set_ylabel("PHATE 2")
     ax.set_aspect("equal")
     fig.tight_layout()
-    fig.savefig("figures/bootstrap_phate_point_embeddings.png", dpi=300)
+    fig.savefig(fig_dir / "bootstrap_phate_point_embeddings.png", dpi=300)
     return fig, ax
 
 
-def gradient_magnitudes(X, key):
+def gradient_magnitudes(X, key, phate_params):
     X_uphate_jac = jax.jacrev(get_phate_embedding)(
         X,
         key,
-        **PHATE_PARAMS,
+        **phate_params,
     )
     grad_magnitudes = jnp.linalg.norm(X_uphate_jac, axis=(2, 3)) / jnp.sqrt(
         X.shape[0] * X_uphate_jac.shape[1]
@@ -133,11 +151,12 @@ def gradient_magnitudes(X, key):
     return grad_magnitudes
 
 
-def phate_gradients(X, key):
+def phate_gradients(X, key, phate_params):
     print("Starting JAX jacobian computation...")
     grad_magnitudes = jax.jit(gradient_magnitudes)(
         X,
         key,
+        phate_params,
     )
     return grad_magnitudes
 
@@ -216,25 +235,33 @@ def phate_gradients_plot(grad_magnitudes, X_uphate):
     ax.set_xlabel("PHATE 1")
     ax.set_ylabel("PHATE 2")
     fig.tight_layout()
-    fig.savefig("figures/phate_gradient_magnitudes.png", dpi=300)
+    fig.savefig(fig_dir / "phate_gradient_magnitudes.png", dpi=300)
     return fig, ax
 
 
 def main():
+    args = parse_args()
+    phate_params = {
+        "knn": args.knn,
+        "t": args.t,
+    }
     key = jax.random.PRNGKey(0)
-    X, labels = get_data()
+    if args.dataset == "dla":
+        X, labels = get_data()
+    else:
+        raise ValueError(f"Unknown dataset: {args.dataset}")
 
     key, base_subkey = jax.random.split(key)
-    X_uphate = get_base_phate(X, base_subkey)
+    X_uphate = get_base_phate(X, base_subkey, phate_params)
     base_phate_plot(X_uphate, labels)
 
     key, bootstrap_subkey = jax.random.split(key)
-    embeddings = get_boostrap_embeddings(X, bootstrap_subkey, n_bootstrap=N_BOOTSTRAP)
+    embeddings = get_boostrap_embeddings(X, bootstrap_subkey, n_bootstrap=args.n_bootstrap, phate_params=phate_params)
     aligned_embeddings = align_bootstrap_embeddings(embeddings, X_uphate)
     bootstrap_phate_plot(aligned_embeddings, X_uphate)
-    bootstrap_point_plot(aligned_embeddings, PLOT_INDEX)
+    bootstrap_point_plot(aligned_embeddings, args.plot_index)
 
-    gradient_magnitudes = phate_gradients(X, base_subkey)
+    gradient_magnitudes = phate_gradients(X, base_subkey, phate_params)
     phate_gradients_plot(gradient_magnitudes, X_uphate)
 
 
