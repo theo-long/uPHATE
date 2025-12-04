@@ -79,6 +79,7 @@ def compute_diffusion_potential(
     t: float,
     gamma: float,
 ):
+    # TODO - no need for conditional if we compile gamma statically
     diff_op_t = jnp.linalg.matrix_power(diff_op, t)
     return jax.lax.cond(
         gamma == 1,
