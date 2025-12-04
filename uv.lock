@@ -1659,7 +1659,7 @@ name = "grpcio"
 version = "1.76.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version >= '3.10'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b6/e0/318c1ce3ae5a17894d5791e87aea147587c9e702f24122cc7a5c8bbaeeb1/grpcio-1.76.0.tar.gz", hash = "sha256:7be78388d6da1a25c0d5ec506523db58b18be22d9c37d8d3a32c08be4987bd73", size = 12785182, upload-time = "2025-10-21T16:23:12.106Z" }
 wheels = [
@@ -2762,6 +2762,43 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/f7/97/ad1a907c0173a90dd4df7228f24a3ec61058bc1a9ff8a0caec20a0cc622e/llvmlite-0.45.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:57c48bf2e1083eedbc9406fb83c4e6483017879714916fe8be8a72a9672c995a", size = 56288210, upload-time = "2025-10-01T18:01:40.26Z" },
     { url = "https://files.pythonhosted.org/packages/32/d8/c99c8ac7a326e9735401ead3116f7685a7ec652691aeb2615aa732b1fc4a/llvmlite-0.45.1-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:3aa3dfceda4219ae39cf18806c60eeb518c1680ff834b8b311bd784160b9ce40", size = 55140957, upload-time = "2025-10-01T18:02:46.244Z" },
     { url = "https://files.pythonhosted.org/packages/09/56/ed35668130e32dbfad2eb37356793b0a95f23494ab5be7d9bf5cb75850ee/llvmlite-0.45.1-cp313-cp313-win_amd64.whl", hash = "sha256:080e6f8d0778a8239cd47686d402cb66eb165e421efa9391366a9b7e5810a38b", size = 38132232, upload-time = "2025-10-01T18:05:14.477Z" },
+]
+
+[[package]]
+name = "markdown"
+version = "3.9"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.10' and sys_platform == 'linux'",
+    "python_full_version < '3.10' and sys_platform != 'linux'",
+]
+dependencies = [
+    { name = "importlib-metadata", marker = "python_full_version < '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8d/37/02347f6d6d8279247a5837082ebc26fc0d5aaeaf75aa013fcbb433c777ab/markdown-3.9.tar.gz", hash = "sha256:d2900fe1782bd33bdbbd56859defef70c2e78fc46668f8eb9df3128138f2cb6a", size = 364585, upload-time = "2025-09-04T20:25:22.885Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/70/ae/44c4a6a4cbb496d93c6257954260fe3a6e91b7bed2240e5dad2a717f5111/markdown-3.9-py3-none-any.whl", hash = "sha256:9f4d91ed810864ea88a6f32c07ba8bee1346c0cc1f6b1f9f6c822f2a9667d280", size = 107441, upload-time = "2025-09-04T20:25:21.784Z" },
+]
+
+[[package]]
+name = "markdown"
+version = "3.10"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.14' and sys_platform == 'linux'",
+    "python_full_version == '3.13.*' and sys_platform == 'linux'",
+    "python_full_version >= '3.14' and sys_platform != 'linux'",
+    "python_full_version == '3.13.*' and sys_platform != 'linux'",
+    "python_full_version == '3.12.*' and sys_platform == 'linux'",
+    "python_full_version == '3.12.*' and sys_platform != 'linux'",
+    "python_full_version == '3.11.*' and sys_platform == 'linux'",
+    "python_full_version == '3.11.*' and sys_platform != 'linux'",
+    "python_full_version == '3.10.*' and sys_platform == 'linux'",
+    "python_full_version == '3.10.*' and sys_platform != 'linux'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7d/ab/7dd27d9d863b3376fcf23a5a13cb5d024aed1db46f963f1b5735ae43b3be/markdown-3.10.tar.gz", hash = "sha256:37062d4f2aa4b2b6b32aefb80faa300f82cc790cb949a35b8caede34f2b68c0e", size = 364931, upload-time = "2025-11-03T19:51:15.007Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/70/81/54e3ce63502cd085a0c556652a4e1b919c45a446bd1e5300e10c44c8c521/markdown-3.10-py3-none-any.whl", hash = "sha256:b5b99d6951e2e4948d939255596523444c0e677c669700b1d17aa4a8a464cb7c", size = 107678, upload-time = "2025-11-03T19:51:13.887Z" },
 ]
 
 [[package]]
@@ -5056,6 +5093,58 @@ wheels = [
 ]
 
 [[package]]
+name = "tensorboard"
+version = "2.20.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "absl-py" },
+    { name = "grpcio" },
+    { name = "markdown", version = "3.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "markdown", version = "3.10", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "pillow", version = "11.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "pillow", version = "12.0.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "protobuf" },
+    { name = "setuptools" },
+    { name = "tensorboard-data-server" },
+    { name = "werkzeug" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9c/d9/a5db55f88f258ac669a92858b70a714bbbd5acd993820b41ec4a96a4d77f/tensorboard-2.20.0-py3-none-any.whl", hash = "sha256:9dc9f978cb84c0723acf9a345d96c184f0293d18f166bb8d59ee098e6cfaaba6", size = 5525680, upload-time = "2025-07-17T19:20:49.638Z" },
+]
+
+[[package]]
+name = "tensorboard-data-server"
+version = "0.7.2"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7a/13/e503968fefabd4c6b2650af21e110aa8466fe21432cd7c43a84577a89438/tensorboard_data_server-0.7.2-py3-none-any.whl", hash = "sha256:7e0610d205889588983836ec05dc098e80f97b7e7bbff7e994ebb78f578d0ddb", size = 2356, upload-time = "2023-10-23T21:23:32.16Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/85/dabeaf902892922777492e1d253bb7e1264cadce3cea932f7ff599e53fea/tensorboard_data_server-0.7.2-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:9fe5d24221b29625dbc7328b0436ca7fc1c23de4acf4d272f1180856e32f9f60", size = 4823598, upload-time = "2023-10-23T21:23:33.714Z" },
+    { url = "https://files.pythonhosted.org/packages/73/c6/825dab04195756cf8ff2e12698f22513b3db2f64925bdd41671bfb33aaa5/tensorboard_data_server-0.7.2-py3-none-manylinux_2_31_x86_64.whl", hash = "sha256:ef687163c24185ae9754ed5650eb5bc4d84ff257aabdc33f0cc6f74d8ba54530", size = 6590363, upload-time = "2023-10-23T21:23:35.583Z" },
+]
+
+[[package]]
+name = "tensorboard-plugin-profile"
+version = "2.21.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "xprof" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b5/73/2181dd6223021d0c0db0ad0860b57ed95a32d9eafcc74b2aa89c37df1d8e/tensorboard_plugin_profile-2.21.3-cp310-none-macosx_12_0_arm64.whl", hash = "sha256:fa582627f1ddfd88b538fadb1f2838fbb71d151f7d1ad40d08640522e4e57d43", size = 5796, upload-time = "2025-12-02T12:23:04.371Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/84/5000ec0381ee36baf3481deae8251a3eff570b4b08072338a39306e3ece4/tensorboard_plugin_profile-2.21.3-cp310-none-manylinux2014_x86_64.whl", hash = "sha256:f33d2a4ef2861ac13f74bf2afa2cf3157dbc514357231bfd08090f502c553ac8", size = 5803, upload-time = "2025-12-02T14:03:50.126Z" },
+    { url = "https://files.pythonhosted.org/packages/dd/1d/6b6973931d7ed05f9c78af94e83928a32017243588a2b9ee60bc357bd1fa/tensorboard_plugin_profile-2.21.3-cp311-none-macosx_12_0_arm64.whl", hash = "sha256:10a3def622620507a6762aeaa3e73cbf4bf80e76aba139f78bd519e3f2d9a619", size = 5797, upload-time = "2025-12-02T12:20:40.519Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/6c/8ed16cc8e8ed897c0b4761ee87684722aa8d5288009f87ac3d6835e0220e/tensorboard_plugin_profile-2.21.3-cp311-none-manylinux2014_x86_64.whl", hash = "sha256:13b04e9c66351dffe21eea9bfc4ad986bb7f776157c3c38a88960bd3957ee1fd", size = 5801, upload-time = "2025-12-02T14:06:36.163Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/5c/ef90c4f56c3d81937263e023b15a90f0d90aa5c8b599178cf5c0dbe531f2/tensorboard_plugin_profile-2.21.3-cp312-none-macosx_12_0_arm64.whl", hash = "sha256:d8594494ebe2cef16439415d7c948e3f0361ac63553736527cc6f993702850e9", size = 5797, upload-time = "2025-12-02T12:37:50.02Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/59/ffd4643f5a5d79fb11609b77d9050f6ca8a693049957e5aa7788e22d1ef4/tensorboard_plugin_profile-2.21.3-cp312-none-manylinux2014_x86_64.whl", hash = "sha256:c9b55895957687cd3d51ac8c66eea19394a3aec2dd5c0b234d7fe9420cb19e3c", size = 5801, upload-time = "2025-12-02T14:17:16.919Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/e2/f87d7f5709c4ebcaa0222bb8152fec62f6c1115caeae26cef4961e717dc8/tensorboard_plugin_profile-2.21.3-cp313-none-macosx_12_0_arm64.whl", hash = "sha256:36a5715a57b796a4633d2be3ddf5f7080fd484c708862ac2a1d2236b01ab2705", size = 5797, upload-time = "2025-12-02T12:24:42.052Z" },
+    { url = "https://files.pythonhosted.org/packages/12/24/27a4a4f9801ad143268b3ea8e236995986450b4093d08c7320382ee0d924/tensorboard_plugin_profile-2.21.3-cp313-none-manylinux2014_x86_64.whl", hash = "sha256:3cdd7ce8179193ee5347075f6be9c6275c57cad170392a6c78c7dab162bca779", size = 5801, upload-time = "2025-12-02T14:14:45.926Z" },
+    { url = "https://files.pythonhosted.org/packages/f7/79/492df13db4d1ebcc9213a896c52684fdf0b0ee6fdcd3dd4dfb76d16a757a/tensorboard_plugin_profile-2.21.3-cp39-none-macosx_12_0_arm64.whl", hash = "sha256:147b1e7e536f539540444a20c2ff1a8a2e5d91fb98b4499eb1446fce4cabbae0", size = 5797, upload-time = "2025-12-02T12:22:35.521Z" },
+    { url = "https://files.pythonhosted.org/packages/95/5a/59653ba037a7e211594d69ebb0675fa1256d1e9a00abaf7d65163c0e52be/tensorboard_plugin_profile-2.21.3-cp39-none-manylinux2014_x86_64.whl", hash = "sha256:09b7624196e11d2a498965bbfdefbf742f3370df51e47838d70832e686b2bcb5", size = 5801, upload-time = "2025-12-02T14:03:35.22Z" },
+]
+
+[[package]]
 name = "threadpoolctl"
 version = "3.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -5221,6 +5310,8 @@ dependencies = [
     { name = "scanpy", version = "1.10.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "scanpy", version = "1.11.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "seaborn" },
+    { name = "tensorboard" },
+    { name = "tensorboard-plugin-profile" },
 ]
 
 [package.optional-dependencies]
@@ -5249,6 +5340,8 @@ requires-dist = [
     { name = "phate", marker = "extra == 'phate'", specifier = ">=2.0.0" },
     { name = "scanpy", specifier = ">=1.10.3" },
     { name = "seaborn", specifier = ">=0.13.2" },
+    { name = "tensorboard", specifier = ">=2.20.0" },
+    { name = "tensorboard-plugin-profile", specifier = ">=2.21.3" },
 ]
 provides-extras = ["phate"]
 
