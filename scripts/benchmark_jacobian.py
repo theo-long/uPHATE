@@ -1,16 +1,27 @@
 from contextlib import nullcontext
 import jax
 import time
+import phate
+import phate.tree
 from uphate.uphate import get_phate_embedding
 
 device = jax.devices("gpu")[0]
+
+
+def get_data(n_samples, n_features, key):
+    X, _ = phate.tree.gen_dla(
+        n_dim=n_features,
+        n_branch=5,
+        branch_length=n_samples // 5,
+    )
+    return jax.numpy.array(X)
 
 
 def benchmark_jacobian(n_samples, n_features, n_landmark, use_jacfwd, trace):
     if n_landmark is not None:
         n_landmark = None if n_landmark > n_samples else n_landmark
     key = jax.random.PRNGKey(0)
-    X = jax.random.normal(key, (n_samples, n_features))
+    X = get_data(n_samples, n_features, key)
 
     print(
         f"Benchmarking Jacobian for N={n_samples}, D={n_features}, L={n_landmark}, dtype={X.dtype}, device={device.platform.upper()}"
@@ -63,6 +74,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable JAX profiling trace output.",
     )
+    parser.add_argument(
+        "--max_n",
+        type=int,
+        default=1000,
+        help="Maximum number of samples to benchmark.",
+    )
     args = parser.parse_args()
 
     # Get the JAX XLA bridge logger
@@ -75,6 +92,8 @@ if __name__ == "__main__":
     n_samples = [100, 200, 500, 1000]
     features = [10, 20, 50, 100]
     for n_s, n_f in zip(n_samples, features):
+        if n_s > args.max_n:
+            break
         benchmark_jacobian(
             n_samples=n_s,
             n_features=n_f,
