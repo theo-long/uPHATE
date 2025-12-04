@@ -26,6 +26,7 @@ phate = [
 dev = [
     "pytest>=8.4.2",
     "ruff>=0.14.1",
+    "xprof>=2.21.3",
 ]
 
 [build-system]
