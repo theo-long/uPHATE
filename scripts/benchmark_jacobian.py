@@ -30,9 +30,9 @@ def benchmark_jacobian(n_samples, n_features, n_landmark, use_jacfwd, trace):
         start_time = time.time()
         print("Computing Jacobian...")
         if use_jacfwd:
-            J = jax.jacfwd(embedding_fn)(X)
+            J = jax.jit(jax.jacfwd(embedding_fn))(X)
         else:
-            J = jax.jacrev(embedding_fn)(X)
+            J = jax.jit(jax.jacrev(embedding_fn))(X)
         # Block until ready
         J.block_until_ready()
         end_time = time.time()
@@ -72,26 +72,13 @@ if __name__ == "__main__":
     logger.setLevel(args.log_level)
 
     # Small scale test
-    benchmark_jacobian(
-        n_samples=50,
-        n_features=5,
-        n_landmark=args.n_landmark,
-        use_jacfwd=args.jacfwd,
-        trace=args.trace,
-    )
-    # Medium scale test
-    benchmark_jacobian(
-        n_samples=100,
-        n_features=10,
-        n_landmark=args.n_landmark,
-        use_jacfwd=args.jacfwd,
-        trace=args.trace,
-    )
-    # Large scale test
-    benchmark_jacobian(
-        n_samples=200,
-        n_features=20,
-        n_landmark=args.n_landmark,
-        use_jacfwd=args.jacfwd,
-        trace=args.trace,
-    )
+    n_samples = [100, 200, 500, 1000]
+    features = [10, 20, 50, 100]
+    for n_s, n_f in zip(n_samples, features):
+        benchmark_jacobian(
+            n_samples=n_s,
+            n_features=n_f,
+            n_landmark=args.n_landmark,
+            use_jacfwd=args.jacfwd,
+            trace=args.trace,
+        )
