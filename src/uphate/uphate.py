@@ -2,11 +2,11 @@
 Differentiable implementation of PHATE
 """
 
+from functools import partial
 from typing import Optional
 
 import jax
 import jax.numpy as jnp
-from tqdm import trange
 
 from uphate.landmark import compute_landmark_op, extend_to_graph
 from uphate.utils import pdist_squared, compute_von_neumann_entropy, find_knee_point
@@ -88,6 +88,43 @@ def compute_diffusion_potential(
     )
 
 
+@partial(jax.checkpoint, static_argnums=(2, 3, 4, 5, 6, 7, 8, 9))
+def fused_diff_potential(
+    X: jax.Array,
+    key: jax.Array,
+    t: float,
+    knn: float,
+    decay: float,
+    n_landmark: Optional[int],
+    gamma: float,
+    weights: Optional[jax.Array],
+    affinity_weights: Optional[jax.Array],
+    threshold: float,
+):
+    # We fuse multiple steps so we can checkpoint the entire process to reduce memory usage
+    affinity_matrix = compute_affinity_matrix(
+        X,
+        knn=knn,
+        decay=decay,
+        affinity_weights=affinity_weights,
+        threshold=threshold,
+    )
+    if weights is not None:
+        affinity_matrix = affinity_matrix * weights[None, :]
+
+    if n_landmark is None:
+        diff_op = compute_diff_op(affinity_matrix)
+        diff_potential = compute_diffusion_potential(diff_op, t, gamma)
+    else:
+        key, subkey = jax.random.split(key)
+        diff_op, data_to_landmarks = compute_landmark_op(
+            subkey, affinity_matrix, n_landmark
+        )
+        del subkey
+        diff_potential = compute_diffusion_potential(diff_op, t, gamma)
+        diff_potential = extend_to_graph(data_to_landmarks, diff_potential)
+    return diff_potential
+
 def get_phate_embedding(
     X: jax.Array,
     key: jax.Array,
@@ -148,31 +185,22 @@ def get_phate_embedding(
             threshold below which affinities are set to zero. If 0 or negative,
             no thresholding is performed.
     """
-    affinity_matrix = compute_affinity_matrix(
+    diff_potential = fused_diff_potential(
         X,
-        knn=knn,
-        decay=decay,
-        affinity_weights=affinity_weights,
-        threshold=threshold,
+        key,
+        t,
+        knn,
+        decay,
+        n_landmark,
+        gamma,
+        weights,
+        affinity_weights,
+        threshold,
     )
-    if weights is not None:
-        affinity_matrix = affinity_matrix * weights[None, :]
-
-    if n_landmark is None:
-        diff_op = compute_diff_op(affinity_matrix)
-        diff_potential = compute_diffusion_potential(diff_op, t, gamma)
-    else:
-        key, subkey = jax.random.split(key)
-        diff_op, data_to_landmarks = compute_landmark_op(
-            subkey, affinity_matrix, n_landmark
-        )
-        del subkey
-        diff_potential = compute_diffusion_potential(diff_op, t, gamma)
-        diff_potential = extend_to_graph(data_to_landmarks, diff_potential)
-
     init_embedding = compute_classic_mds_embedding(
         pdist_squared(diff_potential), n_components=n_components
     )
+    init_embedding = jax.lax.stop_gradient(init_embedding)
     return compute_metric_mds_embedding(init_embedding, diff_potential, key)
 
 

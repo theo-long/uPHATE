@@ -2,6 +2,7 @@ from typing import Any
 import jax
 import jax.numpy as jnp
 import jaxopt
+import jaxopt.linear_solve
 import pcax
 
 from uphate.utils import pdist_squared
@@ -29,23 +30,24 @@ def compute_classic_mds_embedding(
     return pcax.transform(state, squared_dist_matrix)
 
 
+def safe_pdist(x):
+    """Compute pairwise distances with numerical stability."""
+    eps = 1e-12
+    return jnp.sqrt(pdist_squared(x) + eps)
+
+
 def mds_loss(embedding: jax.Array, data: jax.Array, key: Any):
     """
     Loss function for MDS, used in custom derivative for MDS solver.
         We pass the key to match the solver signature. Note that jaxopt expects
         the optimality function (in this case grad(loss) == 0) to have the parameters
         we are solving for be the *first* argument."""
-    triu_indices = jnp.triu_indices(embedding.shape[0], k=1)
-    return (
-        (
-            pdist_squared(data)[triu_indices] ** 0.5
-            - pdist_squared(embedding)[triu_indices] ** 0.5
-        )
-        ** 2
-    ).sum()
+    return ((safe_pdist(data) - safe_pdist(embedding)) ** 2).sum() / 2
 
 
-@jaxopt.implicit_diff.custom_root(jax.grad(mds_loss))
+@jaxopt.implicit_diff.custom_root(
+    jax.checkpoint(jax.grad(mds_loss)), solve=jaxopt.linear_solve.solve_cg
+)
 def compute_metric_mds_embedding(
     init_embedding: jax.Array,
     data: jax.Array,
