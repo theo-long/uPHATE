@@ -3,11 +3,11 @@ import jax
 import time
 from uphate.uphate import get_phate_embedding
 
-def benchmark_jacobian(n_samples=100, n_features=10):
+def benchmark_jacobian(n_samples, n_features, n_landmark):
     key = jax.random.PRNGKey(0)
     X = jax.random.normal(key, (n_samples, n_features))
     
-    print(f"Benchmarking Jacobian for N={n_samples}, D={n_features}")
+    print(f"Benchmarking Jacobian for N={n_samples}, D={n_features}, L={n_landmark}")
     
     # Warmup
     print("Warmup...")
@@ -15,7 +15,7 @@ def benchmark_jacobian(n_samples=100, n_features=10):
     
     # Define function to differentiate
     def embedding_fn(x):
-        return get_phate_embedding(x, key, t=2, n_components=2)
+        return get_phate_embedding(x, key, t=2, n_components=2, n_landmark=n_landmark)
     
     # Measure time
     start_time = time.time()
@@ -29,9 +29,15 @@ def benchmark_jacobian(n_samples=100, n_features=10):
     print(f"Jacobian shape: {J.shape}")
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Benchmark Jacobian computation time.")
+    parser.add_argument(
+        "--n_landmark", type=int, help="Number of samples."
+    )
+    args = parser.parse_args()
     # Small scale test
-    benchmark_jacobian(n_samples=50, n_features=5)
+    benchmark_jacobian(n_samples=50, n_features=5, n_landmark=args.n_landmark)
     # Medium scale test
-    benchmark_jacobian(n_samples=100, n_features=10)
+    benchmark_jacobian(n_samples=100, n_features=10, n_landmark=args.n_landmark)
     # Large scale test
-    benchmark_jacobian(n_samples=500, n_features=20)
+    benchmark_jacobian(n_samples=500, n_features=20, n_landmark=args.n_landmark)
