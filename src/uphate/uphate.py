@@ -101,7 +101,7 @@ def fused_diff_potential(
     affinity_weights: Optional[jax.Array],
     threshold: float,
 ):
-    # We fuse multiple steps so we can checkpoint the entire process to reduce memory usage
+    # We fuse multiple steps so we can checkpoint the entire function to reduce memory usage
     affinity_matrix = compute_affinity_matrix(
         X,
         knn=knn,
