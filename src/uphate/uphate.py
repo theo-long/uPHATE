@@ -88,7 +88,7 @@ def compute_diffusion_potential(
     )
 
 
-@partial(jax.checkpoint, static_argnums=(2, 3, 4, 5, 6, 7, 8, 9))
+@partial(jax.checkpoint, static_argnums=(2, 3, 4, 5, 6, 7, 8, 9)) # pyright: ignore[reportPrivateImportUsage]
 def fused_diff_potential(
     X: jax.Array,
     key: jax.Array,
