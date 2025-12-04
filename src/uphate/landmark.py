@@ -1,7 +1,37 @@
 import jax
 import jax.numpy as jnp
 
-from cr.sparse.cluster.spectral import normalized_symmetric_fast_k
+from cr.sparse.cluster.spectral import (
+    SpectralclusteringSolution,
+    normalized_symmetric_w,
+)
+from cr.sparse._src.cluster.kmeans import kmeans
+import cr.nimble.svd as lasvd
+import cr.nimble as cnb
+
+
+def normalized_symmetric_fast_k(key, W, k):
+    """Normalized symmetric spectral clustering fast implementation"""
+    # following is a shortcut to compute D^{-1} W
+    W = normalized_symmetric_w(W)
+    # convert it into a sparse matrix
+    # W = BCOO.fromdense(W)
+    p0 = lasvd.lanbpro_random_start(key, W)
+    U, S, V, bnd, n_converged, state = lasvd.lansvd_simple(W, k, p0)
+    # Choose the last k eigen vectors
+    kernel = V[:, :k]
+    # normalize the rows of kernel
+    kernel = cnb.normalize_l2_rw(kernel)
+    result = kmeans(key, kernel, k, iter=100)
+    return SpectralclusteringSolution(
+        singular_values=S,
+        assignment=result.assignment,
+        # technically we didn't compute the Laplacian correctly
+        laplancian=W,
+        num_clusters=k,
+        # we didn't compute the connectivity
+        connectivity=-1,
+    )
 
 
 def compute_landmark_op(key: jax.Array, affinity_matrix: jax.Array, n_landmark: int):
