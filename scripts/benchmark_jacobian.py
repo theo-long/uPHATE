@@ -17,7 +17,7 @@ def get_data(n_samples, n_features, key):
     return jax.numpy.array(X)
 
 
-def benchmark_jacobian(n_samples, n_features, n_landmark, use_jacfwd, trace):
+def benchmark_jacobian(n_samples, n_features, n_landmark, use_jacfwd, trace, save):
     if n_landmark is not None:
         n_landmark = None if n_landmark > n_samples else n_landmark
     key = jax.random.PRNGKey(0)
@@ -52,12 +52,19 @@ def benchmark_jacobian(n_samples, n_features, n_landmark, use_jacfwd, trace):
     print(f"Time taken: {end_time - start_time:.4f} seconds")
     print(f"Jacobian shape: {J.shape}")
 
+    if save:
+        suffix = f"_N{n_samples}_D{n_features}_L{n_landmark}_{'fwd' if use_jacfwd else 'rev'}.npy"
+        print(f"Saving to {suffix}...")
+        jax.numpy.save(f"J{suffix}", J)
+        jax.numpy.save(f"X{suffix}", X)
+
 
 if __name__ == "__main__":
     import argparse
     import logging
 
     parser = argparse.ArgumentParser(description="Benchmark Jacobian computation time.")
+    parser.add_argument("--save", action="store_true", help="Save results to a file.")
     parser.add_argument("--n_landmark", type=int, help="Number of samples.")
     parser.add_argument(
         "--jacfwd", action="store_true", help="Use jacfwd instead of jacrev."
@@ -100,4 +107,5 @@ if __name__ == "__main__":
             n_landmark=args.n_landmark,
             use_jacfwd=args.jacfwd,
             trace=args.trace,
+            save=args.save,
         )
