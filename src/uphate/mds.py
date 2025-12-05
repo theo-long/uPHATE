@@ -3,7 +3,7 @@ import jax
 import jax.numpy as jnp
 import jaxopt
 import jaxopt.linear_solve
-import pcax
+import cr.nimble.svd as lasvd
 
 from uphate.utils import pdist_squared
 
@@ -20,14 +20,20 @@ LR_SCHEDULE_LENGTH: int = 30
 DEFAULT_LR_SCHEDULE: jax.Array = mds_lr_schedule(LR_SCHEDULE_LENGTH)
 
 
+def pca_decomposition(key, X, n_components):
+    p0 = lasvd.lanbpro_random_start(key, X)
+    U, S, V, bnd, n_converged, state = lasvd.lansvd_simple(X, n_components, p0)
+    return V
+
+
 def compute_classic_mds_embedding(
+    key,
     squared_dist_matrix: jax.Array,
     n_components: int,
 ):
     squared_dist_matrix -= squared_dist_matrix.mean(axis=0, keepdims=True)
     squared_dist_matrix -= squared_dist_matrix.mean(axis=1, keepdims=True)
-    state = pcax.fit(squared_dist_matrix, n_components=n_components)
-    return pcax.transform(state, squared_dist_matrix)
+    return pca_decomposition(key, squared_dist_matrix, n_components)
 
 
 def safe_pdist(x):

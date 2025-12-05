@@ -89,7 +89,7 @@ def compute_diffusion_potential(
     )
 
 
-@partial(jax.checkpoint, static_argnums=(2, 3, 4, 5, 6, 7, 8, 9)) # pyright: ignore[reportPrivateImportUsage]
+@partial(jax.checkpoint, static_argnums=(2, 3, 4, 5, 6, 7, 8, 9))  # pyright: ignore[reportPrivateImportUsage]
 def fused_diff_potential(
     X: jax.Array,
     key: jax.Array,
@@ -125,6 +125,7 @@ def fused_diff_potential(
         diff_potential = compute_diffusion_potential(diff_op, t, gamma)
         diff_potential = extend_to_graph(data_to_landmarks, diff_potential)
     return diff_potential
+
 
 def get_phate_embedding(
     X: jax.Array,
@@ -186,9 +187,10 @@ def get_phate_embedding(
             threshold below which affinities are set to zero. If 0 or negative,
             no thresholding is performed.
     """
+    key, subkey = jax.random.split(key)
     diff_potential = fused_diff_potential(
         X,
-        key,
+        subkey,
         t,
         knn,
         decay,
@@ -198,11 +200,17 @@ def get_phate_embedding(
         affinity_weights,
         threshold,
     )
+    del subkey
+    key, subkey = jax.random.split(key)
+    # Don't pass gradients through the MDS initialization
+    potential_squared_dist = pdist_squared(jax.lax.stop_gradient(diff_potential))
     init_embedding = compute_classic_mds_embedding(
-        pdist_squared(diff_potential), n_components=n_components
+        subkey, potential_squared_dist, n_components=n_components
     )
+    del subkey
+    key, subkey = jax.random.split(key)
     init_embedding = jax.lax.stop_gradient(init_embedding)
-    return compute_metric_mds_embedding(init_embedding, diff_potential, key)
+    return compute_metric_mds_embedding(init_embedding, diff_potential, subkey)
 
 
 get_phate_embedding_jit = jax.jit(
