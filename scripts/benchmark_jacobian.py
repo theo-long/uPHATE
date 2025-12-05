@@ -106,6 +106,7 @@ if __name__ == "__main__":
     ctx = jax.disable_jit() if args.disable_jit else nullcontext()
     for n_s, n_f in zip(n_samples, features):
         if n_s > args.max_n:
+            print(f"Reached max_n of {args.max_n}, stopping benchmarks.")
             break
         with ctx:
             benchmark_jacobian(
