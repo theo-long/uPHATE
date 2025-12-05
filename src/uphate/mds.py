@@ -32,8 +32,8 @@ def compute_classic_mds_embedding(
 
 def safe_pdist(x):
     """Compute pairwise distances with numerical stability."""
-    eps = 1e-12
-    return jnp.sqrt(pdist_squared(x) + eps)
+    eps = 1e-8
+    return jnp.sqrt(jnp.triu(pdist_squared(x), k=1) + eps)
 
 
 def mds_loss(embedding: jax.Array, data: jax.Array, key: Any):
@@ -42,11 +42,12 @@ def mds_loss(embedding: jax.Array, data: jax.Array, key: Any):
         We pass the key to match the solver signature. Note that jaxopt expects
         the optimality function (in this case grad(loss) == 0) to have the parameters
         we are solving for be the *first* argument."""
-    return ((safe_pdist(data) - safe_pdist(embedding)) ** 2).sum() / 2
+    return ((safe_pdist(data) - safe_pdist(embedding)) ** 2).sum()
 
 
 @jaxopt.implicit_diff.custom_root(
-    jax.checkpoint(jax.grad(mds_loss)), solve=jaxopt.linear_solve.solve_cg
+    jax.checkpoint(jax.grad(mds_loss)),  # pyright: ignore[reportPrivateImportUsage]
+    solve=jaxopt.linear_solve.solve_normal_cg,
 )
 def compute_metric_mds_embedding(
     init_embedding: jax.Array,

@@ -87,6 +87,11 @@ if __name__ == "__main__":
         default=1000,
         help="Maximum number of samples to benchmark.",
     )
+    parser.add_argument(
+        "--disable_jit",
+        action="store_true",
+        help="Disable JIT compilation for benchmarking.",
+    )
     args = parser.parse_args()
 
     # Get the JAX XLA bridge logger
@@ -96,16 +101,18 @@ if __name__ == "__main__":
     logger.setLevel(args.log_level)
 
     # Small scale test
-    n_samples = [100, 200, 500, 1000]
-    features = [10, 20, 50, 100]
+    n_samples = [50, 100, 200, 500, 1000]
+    features = [5, 10, 20, 50, 100]
+    ctx = jax.disable_jit() if args.disable_jit else nullcontext()
     for n_s, n_f in zip(n_samples, features):
         if n_s > args.max_n:
             break
-        benchmark_jacobian(
-            n_samples=n_s,
-            n_features=n_f,
-            n_landmark=args.n_landmark,
-            use_jacfwd=args.jacfwd,
-            trace=args.trace,
-            save=args.save,
-        )
+        with ctx:
+            benchmark_jacobian(
+                n_samples=n_s,
+                n_features=n_f,
+                n_landmark=args.n_landmark,
+                use_jacfwd=args.jacfwd,
+                trace=args.trace,
+                save=args.save,
+            )
