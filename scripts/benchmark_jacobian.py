@@ -1,4 +1,5 @@
 from contextlib import nullcontext
+from typing import Any
 import jax
 import time
 import phate
@@ -6,6 +7,10 @@ import phate.tree
 from uphate.uphate import get_phate_embedding
 
 device = jax.devices("gpu")[0]
+
+PHATE_KWARGS: dict[str, Any] = {
+    "t": 10,
+}
 
 
 def get_data(n_samples, n_features, key):
@@ -29,11 +34,11 @@ def benchmark_jacobian(n_samples, n_features, n_landmark, use_jacfwd, trace, sav
 
     # Warmup
     print("Warmup...")
-    _ = get_phate_embedding(X, key, t=2, n_components=2)
+    _ = get_phate_embedding(X, key, n_components=2, **PHATE_KWARGS)
 
     # Define function to differentiate
     def embedding_fn(x):
-        return get_phate_embedding(x, key, t=2, n_components=2, n_landmark=n_landmark)
+        return get_phate_embedding(x, key, n_components=2, n_landmark=n_landmark, **PHATE_KWARGS)
 
     # Measure time
     ctx = jax.profiler.trace("./profiler_data") if trace else nullcontext()
@@ -48,7 +53,8 @@ def benchmark_jacobian(n_samples, n_features, n_landmark, use_jacfwd, trace, sav
         J.block_until_ready()
         end_time = time.time()
 
-    print(f"Peak GB: {device.memory_stats()['peak_bytes_in_use'] / 1e9: .2f} GB")
+    mem_in_gb = device.memory_stats()["peak_bytes_in_use"] / 1e9
+    print(f"Peak GB: {mem_in_gb: .2f} GB")
     print(f"Time taken: {end_time - start_time:.4f} seconds")
     print(f"Jacobian shape: {J.shape}")
 
@@ -57,6 +63,8 @@ def benchmark_jacobian(n_samples, n_features, n_landmark, use_jacfwd, trace, sav
         print(f"Saving to {suffix}...")
         jax.numpy.save(f"J{suffix}", J)
         jax.numpy.save(f"X{suffix}", X)
+
+    return end_time - start_time, mem_in_gb
 
 
 if __name__ == "__main__":
@@ -104,12 +112,13 @@ if __name__ == "__main__":
     n_samples = [50, 100, 200, 500, 1000]
     features = [5, 10, 20, 50, 100]
     ctx = jax.disable_jit() if args.disable_jit else nullcontext()
+    results = {}
     for n_s, n_f in zip(n_samples, features):
         if n_s > args.max_n:
             print(f"Reached max_n of {args.max_n}, stopping benchmarks.")
             break
         with ctx:
-            benchmark_jacobian(
+            result = benchmark_jacobian(
                 n_samples=n_s,
                 n_features=n_f,
                 n_landmark=args.n_landmark,
@@ -117,3 +126,12 @@ if __name__ == "__main__":
                 trace=args.trace,
                 save=args.save,
             )
+            results[(n_s, n_f)] = result
+
+    print(
+        *(
+            f"s: {s}, f: {f} - {t:.4f} secs {m:.4f} GB"
+            for (s, f), (t, m) in results.items()
+        ),
+        sep="\n",
+    )
