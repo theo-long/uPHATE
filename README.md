@@ -5,6 +5,7 @@
 - use synthetic tree dataset
 
 - figure out how to make jacobian calc stay in memory
+    - figure out whether sparse diff will actually work
 - finish initial synthetic tree plots
 - run same phate plots for one real dataset
 - test uncertainty measurements on one synthetic dataset
