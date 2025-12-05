@@ -1,11 +1,11 @@
-
 from contextlib import nullcontext
 from typing import Any
 import jax
 import time
 import phate
 import phate.tree
-from uphate.uphate import get_phate_embedding
+from uphate.mds import compute_classic_mds_embedding, compute_metric_mds_embedding
+from uphate.utils import pdist_squared
 
 device = jax.devices("gpu")[0]
 
@@ -35,7 +35,12 @@ def benchmark_jacobian(n_samples, n_features, n_landmark, use_jacfwd, trace, sav
 
     # Define function to differentiate
     def embedding_fn(x):
-        return get_phate_embedding(x, key, n_components=2, n_landmark=n_landmark, **PHATE_KWARGS)
+        init_embedding = compute_classic_mds_embedding(key, pdist_squared(X), 2)
+        return compute_metric_mds_embedding(
+            init_embedding,
+            X,
+            key,
+        )
 
     # Measure time
     ctx = jax.profiler.trace("./profiler_data") if trace else nullcontext()
