@@ -5,6 +5,7 @@ import jax.numpy as jnp
 from jax._src.api import _std_basis
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats
 import seaborn as sns
 
 from uphate.uphate import (
@@ -109,7 +110,7 @@ def align_bootstrap_embeddings(embeddings, base_phate_embedding):
     aligned_embeddings = list(
         map(lambda e: align_embeddings(base_phate_embedding, e), embeddings)
     )
-    return aligned_embeddings
+    return jnp.array(aligned_embeddings)
 
 
 def bootstrap_phate_plot(aligned_embeddings, base_phate_embedding):
@@ -263,6 +264,39 @@ def phate_gradients_plot(grad_magnitudes, X_uphate):
     return
 
 
+def phate_uncertainty_comparison(X_uphate, gradient_magnitudes, bootstrap_embeddings):
+    print("Plotting uncertainty comparison...")
+    coord_std = jnp.std(bootstrap_embeddings, axis=0)
+    single_std = jnp.linalg.norm(coord_std, axis=1)
+    single_grad = jnp.linalg.norm(gradient_magnitudes, axis=1)
+    corr = scipy.stats.spearmanr(single_std, single_grad)
+    print(f"Gradient vs. Bootstrap Spearman Correlation: {corr:2f}")
+
+    def size_transform(x):
+        return (x + 1) ** 0.5
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True)
+    for i, (name, uncertainty_metric) in enumerate(
+        [
+            ("Bootstrap Std. Dev.", single_std),
+            ("Gradient Magnitude", single_grad),
+        ]
+    ):
+        rank = jnp.argsort(jnp.argsort(uncertainty_metric))
+        sns.scatterplot(
+            x=X_uphate[:, 0],
+            y=X_uphate[:, 1],
+            c=rank,
+            ax=axes[i],
+            s=size_transform(rank),
+        )
+        axes[i].set_title(name)
+        axes[i].set_xlabel("PHATE 1")
+        axes[i].set_ylabel("PHATE 2")
+
+    fig.savefig("figures/uncertainty_comparison.png", dpi=300)
+
+
 def main():
     args = parse_args()
     phate_params = {
@@ -293,11 +327,13 @@ def main():
     max_mem_gb = jax.devices()[0].memory_stats()["peak_bytes_in_use"] / 1e9
     print(f"Completed with {max_mem_gb:.4f} max GPU memory usage")
 
+    phate_uncertainty_comparison(X_uphate, gradient_magnitudes, aligned_embeddings)
+
     if args.save:
         jnp.save("X.npy", X)
         jnp.save("X_uphate.npy", X_uphate)
         jnp.save("boostrap_embeddings.npy", aligned_embeddings)
-        jnp.save("gradient_maginutdes.npy", gradient_magnitudes)
+        jnp.save("gradient_magnitudes.npy", gradient_magnitudes)
 
 
 if __name__ == "__main__":
