@@ -44,6 +44,9 @@ def parse_args():
     parser.add_argument(
         "--dataset", type=str, choices=["dla"], default="dla", help="Dataset to use."
     )
+    parser.add_argument(
+        "--save", action="store_true", help="Whether to save computed embeddings."
+    )
     args = parser.parse_args()
     return args
 
@@ -246,7 +249,6 @@ def phate_gradients_plot(grad_magnitudes, X_uphate):
     fig.savefig(fig_dir / "phate_gradient_ellipses.png", dpi=300)
 
     fig, ax = plt.subplots(figsize=FIGSIZE)
-    fig, ax = plt.subplots()
     grad_ellipse_area = jnp.clip(jnp.log(jnp.prod(grad_magnitudes, axis=1)), None, 1)
     ax.scatter(
         *X_uphate.T,
@@ -290,6 +292,12 @@ def main():
 
     max_mem_gb = jax.devices()[0].memory_stats()["peak_bytes_in_use"] / 1e9
     print(f"Completed with {max_mem_gb:.4f} max GPU memory usage")
+
+    if args.save:
+        jnp.save("X.npy", X)
+        jnp.save("X_uphate.npy", X_uphate)
+        jnp.save("boostrap_embeddings.npy", aligned_embeddings)
+        jnp.save("gradient_maginutdes.npy", gradient_magnitudes)
 
 
 if __name__ == "__main__":
