@@ -5,6 +5,7 @@ import jax.numpy as jnp
 from jax._src.api import _std_basis
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 from uphate.uphate import (
     get_phate_embedding,
@@ -64,20 +65,22 @@ def get_base_phate(X, key, phate_params):
 
 def base_phate_plot(X_uphate, labels):
     fig, ax = plt.subplots(figsize=FIGSIZE)
-    scatter = ax.scatter(
-        X_uphate[:, 0],
-        X_uphate[:, 1],
-        c=labels,
-        cmap="tab10",
-        s=5,
+    sns.scatterplot(
+        x=X_uphate[:, 0],
+        y=X_uphate[:, 1],
+        hue=labels,
+        style=labels,
+        palette="tab10",
+        s=20,
         alpha=0.8,
+        legend=True,
+        ax=ax,
     )
     ax.set_title("Base PHATE Embedding")
     ax.set_xlabel("PHATE 1")
     ax.set_ylabel("PHATE 2")
     ax.set_aspect("equal")
     ax.legend(
-        *scatter.legend_elements(),
         title="Branches",
         bbox_to_anchor=(1.05, 1),
         loc="upper right",
