@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import jax
 import jax.numpy as jnp
+from jax._src.api import _std_basis
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -38,9 +39,7 @@ def parse_args():
     parser.add_argument(
         "--knn", type=float, default=5.0, help="Number of nearest neighbors for PHATE."
     )
-    parser.add_argument(
-        "--t", type=float, default=20.0, help="Diffusion time for PHATE."
-    )
+    parser.add_argument("--t", type=int, default=20, help="Diffusion time for PHATE.")
     parser.add_argument(
         "--dataset", type=str, choices=["dla"], default="dla", help="Dataset to use."
     )
@@ -139,26 +138,28 @@ def bootstrap_point_plot(aligned_embeddings, point_index):
     return fig, ax
 
 
-def gradient_magnitudes(X, key, phate_params):
-    X_uphate_jac = jax.jacrev(get_phate_embedding)(
-        X,
-        key,
-        **phate_params,
-    )
-    grad_magnitudes = jnp.linalg.norm(X_uphate_jac, axis=(2, 3)) / jnp.sqrt(
-        X.shape[0] * X_uphate_jac.shape[1]
-    )
-    return grad_magnitudes
-
-
 def phate_gradients(X, key, phate_params):
     print("Starting JAX jacobian computation...")
-    grad_magnitudes = jax.jit(gradient_magnitudes)(
-        X,
-        key,
-        phate_params,
-    )
-    return grad_magnitudes
+
+    def embedding_fun(X):
+        return get_phate_embedding(X, key, **phate_params)
+
+    def gradient_magnitudes(X):
+        Y, vjp_fun = jax.vjp(embedding_fun, X)
+        basis = _std_basis(Y)
+        batch_size = 50
+        X_uphate_jac = jax.lax.map(vjp_fun, basis, batch_size=batch_size)[0].reshape(
+            *Y.shape, *X.shape
+        )
+        grad_magnitudes = jnp.linalg.norm(X_uphate_jac, axis=(2, 3)) / jnp.sqrt(
+            X.shape[0] * X_uphate_jac.shape[1]
+        )
+        return grad_magnitudes
+
+    compiled_f = jax.jit(gradient_magnitudes).trace(X).lower().compile()
+    print("Finished compiling grad function, executing...")
+    grad_magnitudes = compiled_f(X)
+    return grad_magnitudes.block_until_ready()
 
 
 def create_gradient_sprite(size, cmap_name):
@@ -229,12 +230,14 @@ def plot_ellipses_with_sprites(positions, axis_lengths):
 
 
 def phate_gradients_plot(grad_magnitudes, X_uphate):
+    print("Plotting gradient magnitudes")
     fig, ax = plot_ellipses_with_sprites(X_uphate, grad_magnitudes)
     ax.set_aspect("equal")
     ax.set_title("Position Uncertainty via PHATE Gradient Magnitudes")
     ax.set_xlabel("PHATE 1")
     ax.set_ylabel("PHATE 2")
     fig.tight_layout()
+    print("Finished generating plot, saving...")
     fig.savefig(fig_dir / "phate_gradient_magnitudes.png", dpi=300)
     return fig, ax
 
@@ -255,11 +258,13 @@ def main():
     X_uphate = get_base_phate(X, base_subkey, phate_params)
     base_phate_plot(X_uphate, labels)
 
-    key, bootstrap_subkey = jax.random.split(key)
-    embeddings = get_boostrap_embeddings(X, bootstrap_subkey, n_bootstrap=args.n_bootstrap, phate_params=phate_params)
-    aligned_embeddings = align_bootstrap_embeddings(embeddings, X_uphate)
-    bootstrap_phate_plot(aligned_embeddings, X_uphate)
-    bootstrap_point_plot(aligned_embeddings, args.plot_index)
+    # key, bootstrap_subkey = jax.random.split(key)
+    # embeddings = get_boostrap_embeddings(
+    #     X, bootstrap_subkey, n_bootstrap=args.n_bootstrap, phate_params=phate_params
+    # )
+    # aligned_embeddings = align_bootstrap_embeddings(embeddings, X_uphate)
+    # bootstrap_phate_plot(aligned_embeddings, X_uphate)
+    # bootstrap_point_plot(aligned_embeddings, args.plot_index)
 
     gradient_magnitudes = phate_gradients(X, base_subkey, phate_params)
     phate_gradients_plot(gradient_magnitudes, X_uphate)
