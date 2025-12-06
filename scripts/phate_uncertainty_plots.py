@@ -147,7 +147,7 @@ def phate_gradients(X, key, phate_params):
     def gradient_magnitudes(X):
         Y, vjp_fun = jax.vjp(embedding_fun, X)
         basis = _std_basis(Y)
-        batch_size = 50
+        batch_size = 400
         X_uphate_jac = jax.lax.map(vjp_fun, basis, batch_size=batch_size)[0].reshape(
             *Y.shape, *X.shape
         )
@@ -198,10 +198,10 @@ def create_gradient_sprite(size, cmap_name):
 
 def plot_ellipses_with_sprites(positions, axis_lengths):
     # --- Plotting ---
-    fig, ax = plt.subplots(figsize=(6, 5))
+    fig, ax = plt.subplots(figsize=FIGSIZE)
 
     # 1. Generate the generic gradient image once
-    sprite = create_gradient_sprite(size=512, cmap_name="Blues")
+    sprite = create_gradient_sprite(size=128, cmap_name="Blues")
 
     # 2. Plot each ellipse as a stretched image
     for pos, axes in zip(positions, axis_lengths):
@@ -231,15 +231,31 @@ def plot_ellipses_with_sprites(positions, axis_lengths):
 
 def phate_gradients_plot(grad_magnitudes, X_uphate):
     print("Plotting gradient magnitudes")
-    fig, ax = plot_ellipses_with_sprites(X_uphate, grad_magnitudes)
+    fig, ax = plot_ellipses_with_sprites(
+        X_uphate, jnp.clip(grad_magnitudes * 20, 0.0, 10.0)
+    )
     ax.set_aspect("equal")
-    ax.set_title("Position Uncertainty via PHATE Gradient Magnitudes")
+    ax.set_title("Position Uncertainty via PHATE Gradient Ellipses")
     ax.set_xlabel("PHATE 1")
     ax.set_ylabel("PHATE 2")
     fig.tight_layout()
     print("Finished generating plot, saving...")
+    fig.savefig(fig_dir / "phate_gradient_ellipses.png", dpi=300)
+
+    fig, ax = plt.subplots(figsize=FIGSIZE)
+    fig, ax = plt.subplots()
+    grad_ellipse_area = jnp.clip(jnp.log(jnp.prod(grad_magnitudes, axis=1)), None, 1)
+    ax.scatter(
+        *X_uphate.T,
+        c=grad_ellipse_area,
+        s=(grad_ellipse_area - grad_ellipse_area.min() + 0.2) ** 2,
+    )
+    ax.set_aspect("equal")
+    ax.set_title("Position Uncertainty via PHATE Gradient Magnitudes")
+    ax.set_xlabel("PHATE 1")
+    ax.set_ylabel("PHATE 2")
     fig.savefig(fig_dir / "phate_gradient_magnitudes.png", dpi=300)
-    return fig, ax
+    return
 
 
 def main():
@@ -258,16 +274,19 @@ def main():
     X_uphate = get_base_phate(X, base_subkey, phate_params)
     base_phate_plot(X_uphate, labels)
 
-    # key, bootstrap_subkey = jax.random.split(key)
-    # embeddings = get_boostrap_embeddings(
-    #     X, bootstrap_subkey, n_bootstrap=args.n_bootstrap, phate_params=phate_params
-    # )
-    # aligned_embeddings = align_bootstrap_embeddings(embeddings, X_uphate)
-    # bootstrap_phate_plot(aligned_embeddings, X_uphate)
-    # bootstrap_point_plot(aligned_embeddings, args.plot_index)
+    key, bootstrap_subkey = jax.random.split(key)
+    embeddings = get_boostrap_embeddings(
+        X, bootstrap_subkey, n_bootstrap=args.n_bootstrap, phate_params=phate_params
+    )
+    aligned_embeddings = align_bootstrap_embeddings(embeddings, X_uphate)
+    bootstrap_phate_plot(aligned_embeddings, X_uphate)
+    bootstrap_point_plot(aligned_embeddings, args.plot_index)
 
     gradient_magnitudes = phate_gradients(X, base_subkey, phate_params)
     phate_gradients_plot(gradient_magnitudes, X_uphate)
+
+    max_mem_gb = jax.devices()[0].memory_stats()["peak_bytes_in_use"] / 1e9
+    print(f"Completed with {max_mem_gb:.4f} max GPU memory usage")
 
 
 if __name__ == "__main__":
