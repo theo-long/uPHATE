@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import time
 import jax
 import jax.numpy as jnp
 from jax._src.api import _std_basis
@@ -24,9 +25,7 @@ DATA_PARAMS = {
     "branch_length": 80,
 }
 FIGSIZE = (6, 5)
-
-fig_dir = Path("figures")
-fig_dir.mkdir(exist_ok=True)
+NUM_PCA_COMPONENTS = 100
 
 
 def parse_args():
@@ -34,6 +33,7 @@ def parse_args():
     parser.add_argument(
         "--n_bootstrap", type=int, default=10, help="Number of bootstrap samples."
     )
+    parser.add_argument("--n_landmark", type=int)
     parser.add_argument(
         "--plot_index",
         type=int,
@@ -45,7 +45,11 @@ def parse_args():
     )
     parser.add_argument("--t", type=int, default=20, help="Diffusion time for PHATE.")
     parser.add_argument(
-        "--dataset", type=str, choices=["dla", "embryoid", "embryoid_pca"], default="dla", help="Dataset to use."
+        "--dataset",
+        type=str,
+        choices=["dla", "embryoid", "embryoid_pca"],
+        default="dla",
+        help="Dataset to use.",
     )
     parser.add_argument(
         "--save", action="store_true", help="Whether to save computed embeddings."
@@ -58,7 +62,9 @@ def parse_args():
 def get_embryoid(pca=False):
     try:
         if pca:
-            X = jnp.load("./data/embryoid_body_preprocessed_pca.npy")
+            X = jnp.load("./data/embryoid_body_preprocessed_pca.npy")[
+                :, :NUM_PCA_COMPONENTS
+            ]
         else:
             X = jnp.load("./data/embryoid_body_preprocessed.npy")
     except FileNotFoundError as e:
@@ -350,11 +356,11 @@ def generate_correlation_plots(X, labels, X_uphate, X_bootstrap, gradient_magnit
     fig.savefig("figures/metric_correlations.png", dpi=300)
 
 
-def main():
-    args = parse_args()
+def main(args):
     phate_params = {
         "knn": args.knn,
         "t": args.t,
+        "n_landmark": args.n_landmark,
     }
     key = jax.random.PRNGKey(0)
     if args.dataset == "dla":
@@ -367,7 +373,10 @@ def main():
         raise ValueError(f"Unknown dataset: {args.dataset}")
 
     key, base_subkey = jax.random.split(key)
+    X, labels = X[:1000, :100], labels[:1000]
+    s = time.time()
     X_uphate = get_base_phate(X, base_subkey, phate_params)
+    print(f"TIME: {time.time() - s:.1f}")
     base_phate_plot(X_uphate, labels)
 
     key, bootstrap_subkey = jax.random.split(key)
@@ -394,4 +403,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    fig_dir = Path("figures") / args.dataset
+    fig_dir.mkdir(exist_ok=True)
+    main(args)

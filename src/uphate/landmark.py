@@ -41,7 +41,11 @@ def compute_landmark_op(key: jax.Array, affinity_matrix: jax.Array, n_landmark: 
     between samples assigned to each cluster.
     """
     key, subkey = jax.random.split(key)
-    clusters = normalized_symmetric_fast_k(subkey, affinity_matrix, n_landmark)
+
+    # Don't take gradients of cluster positions
+    clusters = normalized_symmetric_fast_k(
+        subkey, jax.lax.stop_gradient(affinity_matrix), n_landmark
+    )
     del subkey
 
     # transition matrices
