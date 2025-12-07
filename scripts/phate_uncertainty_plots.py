@@ -5,8 +5,10 @@ import jax.numpy as jnp
 from jax._src.api import _std_basis
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 import scipy.stats
 import seaborn as sns
+from zadu import zadu
 
 from uphate.uphate import (
     get_phate_embedding,
@@ -295,6 +297,42 @@ def phate_uncertainty_comparison(X_uphate, gradient_magnitudes, bootstrap_embedd
         axes[i].set_ylabel("PHATE 2")
 
     fig.savefig("figures/uncertainty_comparison.png", dpi=300)
+
+
+def generate_correlation_plots(X, labels, X_uphate, X_bootstrap, gradient_magnitudes):
+    coord_std = jnp.std(X_bootstrap, axis=0)
+    single_std = jnp.linalg.norm(coord_std, axis=1)
+    single_grad = jnp.linalg.norm(gradient_magnitudes, axis=1)
+    spec = [
+        {
+            "id": "tnc",
+            "params": {"k": 20},
+        },
+        {"id": "mrre", "params": {"k": 20}},
+        {
+            "id": "ca_tnc",
+            "params": {"k": 20},
+        },
+    ]
+    global_scores, (local_tnc, local_mrre, local_ca_tnc) = zadu.ZADU(
+        spec, X, return_local=True
+    ).measure(X_uphate, label=labels)
+
+    data = dict(**local_tnc, **local_ca_tnc, **local_mrre)
+    data["Gradient Magnitudes"] = single_grad
+    data["Bootstrap Std. Dev."] = single_std
+
+    fig, ax = plt.subplots(figsize=(10, 3))
+    sns.heatmap(
+        pd.DataFrame(data)
+        .corr("spearman")
+        .loc[["Gradient Magnitudes", "Bootstrap Std. Dev."], :],
+        ax=ax,
+        annot=True,
+    )
+    ax.set_xticklabels(data.keys(), rotation=45, ha="right")
+    fig.tight_layout()
+    fig.savefig("figures/metric_correlations.png", dpi=300)
 
 
 def main():
