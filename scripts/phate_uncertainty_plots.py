@@ -1,7 +1,6 @@
 import argparse
 from pathlib import Path
 import jax
-from jax import exc
 import jax.numpy as jnp
 from jax._src.api import _std_basis
 import numpy as np
@@ -46,11 +45,12 @@ def parse_args():
     )
     parser.add_argument("--t", type=int, default=20, help="Diffusion time for PHATE.")
     parser.add_argument(
-        "--dataset", type=str, choices=["dla"], default="dla", help="Dataset to use."
+        "--dataset", type=str, choices=["dla", "embryoid", "embryoid_pca"], default="dla", help="Dataset to use."
     )
     parser.add_argument(
         "--save", action="store_true", help="Whether to save computed embeddings."
     )
+    parser.add_argument("--batch_size", type=int, default=400)
     args = parser.parse_args()
     return args
 
@@ -58,15 +58,15 @@ def parse_args():
 def get_embryoid(pca=False):
     try:
         if pca:
-            X = jnp.load("../data/embryoid_body_preprocessed_pca.npy")
+            X = jnp.load("./data/embryoid_body_preprocessed_pca.npy")
         else:
-            X = jnp.load("../data/embryoid_body_preprocessed.npy")
+            X = jnp.load("./data/embryoid_body_preprocessed.npy")
     except FileNotFoundError as e:
         raise FileNotFoundError(
             "Could not find embryoid data, try running examples/embryoid_body_data.ipynb first."
         ) from e
 
-    labels = jnp.load("../data/embryoid_body_timepoint.npy")
+    labels = jnp.load("./data/embryoid_body_timepoint.npy")
     return X, labels
 
 
@@ -163,7 +163,7 @@ def bootstrap_point_plot(aligned_embeddings, point_index):
     return fig, ax
 
 
-def phate_gradients(X, key, phate_params):
+def phate_gradients(X, key, phate_params, batch_size):
     print("Starting JAX jacobian computation...")
 
     def embedding_fun(X):
@@ -172,7 +172,6 @@ def phate_gradients(X, key, phate_params):
     def gradient_magnitudes(X):
         Y, vjp_fun = jax.vjp(embedding_fun, X)
         basis = _std_basis(Y)
-        batch_size = 400
         X_uphate_jac = jax.lax.map(vjp_fun, basis, batch_size=batch_size)[0].reshape(
             *Y.shape, *X.shape
         )
@@ -379,7 +378,7 @@ def main():
     bootstrap_phate_plot(aligned_embeddings, X_uphate)
     bootstrap_point_plot(aligned_embeddings, args.plot_index)
 
-    gradient_magnitudes = phate_gradients(X, base_subkey, phate_params)
+    gradient_magnitudes = phate_gradients(X, base_subkey, phate_params, args.batch_size)
     phate_gradients_plot(gradient_magnitudes, X_uphate)
 
     max_mem_gb = jax.devices()[0].memory_stats()["peak_bytes_in_use"] / 1e9
