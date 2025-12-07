@@ -375,7 +375,6 @@ def main(args):
         raise ValueError(f"Unknown dataset: {args.dataset}")
 
     key, base_subkey = jax.random.split(key)
-    X, labels = X[:1000, :100], labels[:1000]
     s = time.time()
     X_uphate = get_base_phate(X, base_subkey, phate_params)
     print(f"TIME: {time.time() - s:.1f}")
