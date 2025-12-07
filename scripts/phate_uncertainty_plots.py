@@ -40,6 +40,7 @@ def parse_args():
         default=0,
         help="Index of point to plot in bootstrap point plot.",
     )
+    parser.add_argument("--decay", default=20, type=float)
     parser.add_argument(
         "--knn", type=float, default=5.0, help="Number of nearest neighbors for PHATE."
     )
@@ -361,6 +362,7 @@ def main(args):
         "knn": args.knn,
         "t": args.t,
         "n_landmark": args.n_landmark,
+        "decay": args.decay,
     }
     key = jax.random.PRNGKey(0)
     if args.dataset == "dla":
@@ -388,18 +390,19 @@ def main(args):
     bootstrap_point_plot(aligned_embeddings, args.plot_index)
 
     gradient_magnitudes = phate_gradients(X, base_subkey, phate_params, args.batch_size)
-    phate_gradients_plot(gradient_magnitudes, X_uphate)
-
-    max_mem_gb = jax.devices()[0].memory_stats()["peak_bytes_in_use"] / 1e9
-    print(f"Completed with {max_mem_gb:.4f} max GPU memory usage")
-
-    phate_uncertainty_comparison(X_uphate, gradient_magnitudes, aligned_embeddings)
 
     if args.save:
         jnp.save("X.npy", X)
         jnp.save("X_uphate.npy", X_uphate)
         jnp.save("boostrap_embeddings.npy", aligned_embeddings)
         jnp.save("gradient_magnitudes.npy", gradient_magnitudes)
+
+    phate_gradients_plot(gradient_magnitudes, X_uphate)
+
+    max_mem_gb = jax.devices()[0].memory_stats()["peak_bytes_in_use"] / 1e9
+    print(f"Completed with {max_mem_gb:.4f} max GPU memory usage")
+
+    phate_uncertainty_comparison(X_uphate, gradient_magnitudes, aligned_embeddings)
 
 
 if __name__ == "__main__":
