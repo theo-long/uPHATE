@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 import jax
+from jax import exc
 import jax.numpy as jnp
 from jax._src.api import _std_basis
 import numpy as np
@@ -52,6 +53,21 @@ def parse_args():
     )
     args = parser.parse_args()
     return args
+
+
+def get_embryoid(pca=False):
+    try:
+        if pca:
+            X = jnp.load("../data/embryoid_body_preprocessed_pca.npy")
+        else:
+            X = jnp.load("../data/embryoid_body_preprocessed.npy")
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            "Could not find embryoid data, try running examples/embryoid_body_data.ipynb first."
+        ) from e
+
+    labels = jnp.load("../data/embryoid_body_timepoint.npy")
+    return X, labels
 
 
 def get_data():
@@ -344,6 +360,10 @@ def main():
     key = jax.random.PRNGKey(0)
     if args.dataset == "dla":
         X, labels = get_data()
+    elif args.dataset == "embryoid":
+        X, labels = get_embryoid()
+    elif args.dataset == "embryoid_pca":
+        X, labels = get_embryoid(pca=True)
     else:
         raise ValueError(f"Unknown dataset: {args.dataset}")
 

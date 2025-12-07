@@ -213,3 +213,4 @@ __marimo__/
 data/*
 profiler_data/**
 *.npy
+examples/cache
