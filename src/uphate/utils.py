@@ -155,3 +155,26 @@ def align_embeddings(base: jax.Array, other: jax.Array):
 
     rot, _ = Rotation.align_vectors(base, other)
     return rot.apply(other)[:, :out_dims]
+
+
+def standardize(X: jax.Array):
+    X -= X.mean(axis=0, keepdims=True)
+    X /= X.std(axis=0, keepdims=True)
+    return X
+
+
+def get_embryoid(pca=False, num_pca_components=100):
+    try:
+        if pca:
+            X = jnp.load("./data/embryoid_body_preprocessed_pca.npy")[
+                :, :num_pca_components
+            ]
+        else:
+            X = jnp.load("./data/embryoid_body_preprocessed.npy")
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            "Could not find embryoid data, try running examples/embryoid_body_data.ipynb first."
+        ) from e
+
+    labels = jnp.load("./data/embryoid_body_timepoint.npy")
+    return X, labels

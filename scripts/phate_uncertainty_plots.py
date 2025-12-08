@@ -16,7 +16,7 @@ from uphate.uphate import (
     get_phate_embedding_jit,
     get_phate_embedding_bootstrap,
 )
-from uphate.utils import align_embeddings
+from uphate.utils import align_embeddings, get_embryoid
 from phate.tree import gen_dla
 
 DATA_PARAMS = {
@@ -25,7 +25,6 @@ DATA_PARAMS = {
     "branch_length": 80,
 }
 FIGSIZE = (6, 5)
-NUM_PCA_COMPONENTS = 100
 
 
 def parse_args():
@@ -58,23 +57,6 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=400)
     args = parser.parse_args()
     return args
-
-
-def get_embryoid(pca=False):
-    try:
-        if pca:
-            X = jnp.load("./data/embryoid_body_preprocessed_pca.npy")[
-                :, :NUM_PCA_COMPONENTS
-            ]
-        else:
-            X = jnp.load("./data/embryoid_body_preprocessed.npy")
-    except FileNotFoundError as e:
-        raise FileNotFoundError(
-            "Could not find embryoid data, try running examples/embryoid_body_data.ipynb first."
-        ) from e
-
-    labels = jnp.load("./data/embryoid_body_timepoint.npy")
-    return X, labels
 
 
 def get_data():

@@ -214,3 +214,4 @@ data/*
 profiler_data/**
 *.npy
 examples/cache
+models/*
