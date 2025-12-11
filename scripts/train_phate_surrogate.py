@@ -80,11 +80,11 @@ def main():
     )
     jnp.save(
         save_dir / "X.npy",
-        X_surrogate,
+        X,
     )
     jnp.save(
         save_dir / "X_phate.npy",
-        X_surrogate,
+        X_phate,
     )
     jnp.save(
         save_dir / "labels.npy",
