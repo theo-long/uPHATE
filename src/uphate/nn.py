@@ -38,7 +38,7 @@ class MlpBlock(nnx.Module):
         )
         self.lin2 = nnx.Linear(
             in_features=config.mlp_dim,
-            out_features=config.qkv_dim,
+            out_features=out_dim,
             dtype=config.dtype,
             kernel_init=config.kernel_init,
             bias_init=config.bias_init,
@@ -165,6 +165,7 @@ def train_step(
     (loss, emb), grads = grad_fn(model, X, X_phate)
     metrics.update(loss=loss)
     optimizer.update(grads)
+    return loss
 
 
 def train_phate_surrogate(
@@ -187,11 +188,14 @@ def train_phate_surrogate(
         loss=nnx.metrics.Average("loss"),
     )
 
+    loss = jnp.inf
     for step in range(epochs):
         model.train()
-        train_step(model, optimizer, metrics, X, X_phate)
+        loss = train_step(model, optimizer, metrics, X, X_phate)
         for metric, value in metrics.compute().items():
             print(f"step {step} {metric}: {value:.4f}")
+        metrics.reset()
 
+    print(f"Final loss: {loss:.4f}")
     model.eval()
     return model

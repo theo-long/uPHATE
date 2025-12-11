@@ -4,7 +4,6 @@ import datetime
 
 import orbax.checkpoint as ocp
 from flax import nnx
-import jax.experimental.sparse as jaxsp
 from uphate.nn import train_phate_surrogate, TransformerConfig
 from uphate.utils import get_embryoid
 from phate.tree import gen_dla
