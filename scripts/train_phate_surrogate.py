@@ -8,6 +8,7 @@ from uphate.nn import train_phate_surrogate, TransformerConfig
 from uphate.utils import get_embryoid
 from phate.tree import gen_dla
 from phate import PHATE
+import jax.numpy as jnp
 
 DATA_PARAMS = {
     "n_branch": 10,
@@ -15,6 +16,7 @@ DATA_PARAMS = {
     "branch_length": 80,
 }
 MODEL_SAVE_DIR = Path("./models").resolve()
+X_SAVE_DIR = Path("./embeddings").resolve()
 
 
 def parse_args():
@@ -64,6 +66,29 @@ def main():
         MODEL_SAVE_DIR
         / f"surrogate_{args.dataset}_{datetime.datetime.now().strftime('%d%m%Y_%H%M%S')}.nnx",
         state,
+    )
+
+    X_surrogate = surrogate(X)
+    save_dir = (
+        X_SAVE_DIR
+        / f"{args.dataset}_{datetime.datetime.now().strftime('%d%m%Y_%H%M%S')}"
+    )
+    save_dir.mkdir(exist_ok=True)
+    jnp.save(
+        save_dir / "X_surrogate.npy",
+        X_surrogate,
+    )
+    jnp.save(
+        save_dir / "X.npy",
+        X_surrogate,
+    )
+    jnp.save(
+        save_dir / "X_phate.npy",
+        X_surrogate,
+    )
+    jnp.save(
+        save_dir / "labels.npy",
+        labels,
     )
 
 
