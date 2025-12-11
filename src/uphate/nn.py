@@ -3,6 +3,8 @@ import jax
 import optax
 from flax import nnx, struct
 from typing import Any, Callable
+from pathlib import Path
+import orbax.checkpoint as ocp
 
 
 @struct.dataclass
@@ -199,3 +201,15 @@ def train_phate_surrogate(
     print(f"Final loss: {loss:.4f}")
     model.eval()
     return model
+
+
+def load_orbax_checkpoint(base_model, checkpoint_path: str | Path):
+    abstract_model = nnx.eval_shape(
+        lambda: base_model,
+    )
+    graphdef, abstract_state = nnx.split(abstract_model)
+    state_restored = ocp.Checkpointer(ocp.StandardCheckpointHandler()).restore(
+        checkpoint_path,
+        item=jax.tree.map(lambda x: jnp.zeros(x.shape), abstract_state),
+    )
+    return nnx.merge(graphdef, state_restored)
