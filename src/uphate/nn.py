@@ -165,7 +165,7 @@ def train_step(
     """Train for a single step."""
     grad_fn = nnx.value_and_grad(loss_fn, has_aux=True)
     (loss, emb), grads = grad_fn(model, X, X_phate)
-    metrics.update(loss=loss)
+    metrics.update(loss=loss, std=jnp.std(emb, axis=0))
     optimizer.update(grads)
     return loss
 
@@ -188,14 +188,20 @@ def train_phate_surrogate(
     )
     metrics = nnx.MultiMetric(
         loss=nnx.metrics.Average("loss"),
+        std=nnx.metrics.Average("std"),
     )
 
     loss = jnp.inf
     for step in range(epochs):
         model.train()
         loss = train_step(model, optimizer, metrics, X, X_phate)
-        for metric, value in metrics.compute().items():
-            print(f"step {step} {metric}: {value:.4f}")
+        print(
+            f"step {step}",
+            *(
+                f" | {metric}: {value:.4f}"
+                for metric, value in metrics.compute().items()
+            ),
+        )
         metrics.reset()
 
     print(f"Final loss: {loss:.4f}")

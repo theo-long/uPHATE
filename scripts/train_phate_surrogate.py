@@ -5,7 +5,7 @@ import datetime
 import orbax.checkpoint as ocp
 from flax import nnx
 from uphate.nn import train_phate_surrogate, TransformerConfig
-from uphate.utils import get_embryoid
+from uphate.utils import get_embryoid, standardize
 from phate.tree import gen_dla
 from phate import PHATE
 import jax.numpy as jnp
@@ -35,6 +35,8 @@ def parse_args():
         help="Dataset to use.",
     )
     parser.add_argument("--epochs", default=100, type=int)
+    parser.add_argument("--lr", default=0.01, type=float)
+    parser.add_argument("--momentum", default=0.9, type=float)
     args = parser.parse_args()
     return args
 
@@ -55,8 +57,16 @@ def main():
         knn=args.knn, decay=args.decay, n_landmark=args.n_landmark, t=args.t
     ).fit_transform(X)
 
+    # standardize
+    X, X_phate = standardize(jnp.array(X)), standardize(jnp.array(X_phate))
+
     surrogate = train_phate_surrogate(
-        X, X_phate, TransformerConfig(), epochs=args.epochs
+        X,
+        X_phate,
+        TransformerConfig(),
+        epochs=args.epochs,
+        learning_rate=args.lr,
+        momentum=args.momentum,
     )
     _, state = nnx.split(surrogate)
 
