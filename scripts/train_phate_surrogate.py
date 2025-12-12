@@ -11,6 +11,7 @@ from uphate.utils import get_embryoid, standardize
 from phate.tree import gen_dla
 from phate import PHATE
 import jax.numpy as jnp
+from jax._src.api import _std_basis
 
 DATA_PARAMS = {
     "n_branch": 10,
@@ -40,6 +41,7 @@ def parse_args():
     parser.add_argument("--lr", default=0.01, type=float)
     parser.add_argument("--wd", default=0.0, type=float)
     parser.add_argument("--momentum", default=0.9, type=float)
+    parser.add_argument("--jac_batch_size", default=100)
     args = parser.parse_args()
     return args
 
@@ -102,7 +104,18 @@ def main():
         labels,
     )
 
-    jac_surrogate = jax.jit(jax.jacrev(surrogate))(X)
+    print("Computing surrogate jacobian")
+
+    def batched_jac(X):
+        # Instead of vmapping vjp, which jax.jacrev does, we map in batches to save mem
+        Y, vjp_fun = jax.vjp(lambda x: surrogate(x), X)
+        basis = _std_basis(Y)
+        jac = jax.lax.map(vjp_fun, basis, batch_size=args.jac_batch_size)[0].reshape(
+            *Y.shape, *X.shape
+        )
+        return jac
+
+    jac_surrogate = jax.jit(batched_jac)(X)
     jnp.save(
         save_dir / "jac_surrogate.npy",
         jac_surrogate,
@@ -117,6 +130,7 @@ def main():
     fig.savefig(
         save_dir / "surrogate_comparison.png",
     )
+
 
 if __name__ == "__main__":
     main()
