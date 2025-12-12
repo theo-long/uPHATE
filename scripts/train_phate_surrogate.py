@@ -36,6 +36,7 @@ def parse_args():
     )
     parser.add_argument("--epochs", default=100, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
+    parser.add_argument("--wd", default=0., type=float)
     parser.add_argument("--momentum", default=0.9, type=float)
     args = parser.parse_args()
     return args
@@ -67,6 +68,7 @@ def main():
         epochs=args.epochs,
         learning_rate=args.lr,
         momentum=args.momentum,
+        weight_decay=args.wd,
     )
     _, state = nnx.split(surrogate)
 

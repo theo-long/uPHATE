@@ -174,9 +174,10 @@ def train_phate_surrogate(
     X,
     X_phate,
     config: TransformerConfig,
-    epochs: int = 100,
-    learning_rate=0.005,
-    momentum=0.9,
+    epochs: int,
+    learning_rate: float,
+    momentum: float,
+    weight_decay: float,
     seed=42,
 ):
     """Train differentiable surrogate model for PHATE embedding."""
@@ -184,7 +185,9 @@ def train_phate_surrogate(
     rngs = nnx.Rngs(seed)
     model = Transformer(X.shape[1], X_phate.shape[1], rngs=rngs, config=config)
     optimizer = nnx.Optimizer(
-        model, optax.adamw(learning_rate, momentum), wrt=nnx.Param
+        model,
+        optax.adamw(learning_rate, momentum, weight_decay=weight_decay),
+        wrt=nnx.Param,
     )
     metrics = nnx.MultiMetric(
         loss=nnx.metrics.Average("loss"),
