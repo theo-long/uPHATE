@@ -215,3 +215,4 @@ profiler_data/**
 *.npy
 notebooks/cache
 models/*
+embeddings/*

@@ -12,11 +12,12 @@ class TransformerConfig:
     """Global hyperparameters used to minimize obnoxious kwarg plumbing."""
 
     dtype: Any = jnp.float32
-    num_heads: int = 8
-    num_layers: int = 6
+    num_heads: int = 4
+    num_layers: int = 4
     qkv_dim: int = 512
     mlp_dim: int = 2048
     max_len: int = 2048
+    act: Callable = nnx.elu
     kernel_init: Callable = nnx.initializers.xavier_uniform()
     bias_init: Callable = nnx.initializers.normal(stddev=1e-6)
 
@@ -46,11 +47,12 @@ class MlpBlock(nnx.Module):
             bias_init=config.bias_init,
             rngs=rngs,
         )
+        self.act = config.act
 
     def __call__(self, inputs):
         """Applies Transformer MlpBlock module."""
         x = self.lin1(inputs)
-        x = nnx.elu(x)
+        x = self.act(x)
         output = self.lin2(x)
         return output
 

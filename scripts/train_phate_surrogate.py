@@ -2,6 +2,8 @@ import argparse
 from pathlib import Path
 import datetime
 
+import jax
+import matplotlib.pyplot as plt
 import orbax.checkpoint as ocp
 from flax import nnx
 from uphate.nn import train_phate_surrogate, TransformerConfig
@@ -36,7 +38,7 @@ def parse_args():
     )
     parser.add_argument("--epochs", default=100, type=int)
     parser.add_argument("--lr", default=0.01, type=float)
-    parser.add_argument("--wd", default=0., type=float)
+    parser.add_argument("--wd", default=0.0, type=float)
     parser.add_argument("--momentum", default=0.9, type=float)
     args = parser.parse_args()
     return args
@@ -73,18 +75,15 @@ def main():
     _, state = nnx.split(surrogate)
 
     # Use *synchronous* checkpointer
+    now_str = datetime.datetime.now().strftime("%d%m%Y_%H%M%S")
     checkpointer = ocp.Checkpointer(ocp.StandardCheckpointHandler())
     checkpointer.save(
-        MODEL_SAVE_DIR
-        / f"surrogate_{args.dataset}_{datetime.datetime.now().strftime('%d%m%Y_%H%M%S')}.nnx",
+        MODEL_SAVE_DIR / f"surrogate_{args.dataset}_{now_str}.nnx",
         state,
     )
 
     X_surrogate = surrogate(X)
-    save_dir = (
-        X_SAVE_DIR
-        / f"{args.dataset}_{datetime.datetime.now().strftime('%d%m%Y_%H%M%S')}"
-    )
+    save_dir = X_SAVE_DIR / f"{args.dataset}_{now_str}"
     save_dir.mkdir(exist_ok=True)
     jnp.save(
         save_dir / "X_surrogate.npy",
@@ -103,6 +102,21 @@ def main():
         labels,
     )
 
+    jac_surrogate = jax.jit(jax.jacrev(surrogate))(X)
+    jnp.save(
+        save_dir / "jac_surrogate.npy",
+        jac_surrogate,
+    )
+
+    # Save comparison plot
+    fig, ax = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True)
+    ax[0].scatter(*X_phate.T, c=labels, cmap="tab10", s=1)
+    ax[0].set_title("PHATE")
+    ax[1].scatter(*X_surrogate.T, c=labels, cmap="tab10", s=1)
+    ax[1].set_title("Surrogate")
+    fig.savefig(
+        save_dir / "surrogate_comparison.png",
+    )
 
 if __name__ == "__main__":
     main()
