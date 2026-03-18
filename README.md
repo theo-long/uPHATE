@@ -15,3 +15,7 @@
 # Datasets
 https://github.com/quadbio/scRNAseq_analysis_vignette/blob/master/Tutorial.md
 All of us data
+
+# TODO
+- come up with some theory
+- experiments
